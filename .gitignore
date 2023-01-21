@@ -1,0 +1,8 @@
+GTAGS
+GPATH
+GRTAGS
+.aproject/
+
+
+/target
+Cargo.lock
