@@ -1,6 +1,7 @@
 use axum::{http::StatusCode, routing::get, Router};
 use std::net::SocketAddr;
 
+mod common;
 mod service_mgr;
 mod service_sdk;
 
