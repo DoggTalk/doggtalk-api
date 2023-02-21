@@ -8,21 +8,24 @@ use serde::Serialize;
 use serde_json::json;
 
 #[allow(dead_code)]
-pub fn app_success<T>(data: T) -> ApiSuccess<T> {
+pub fn api_success<T>(data: T) -> ApiSuccess<T> {
     return ApiSuccess { data };
 }
 
 #[allow(dead_code)]
-pub fn app_error(code: ApiErrorCode) -> ApiError {
+pub fn api_error(code: ApiErrorCode) -> ApiError {
     return ApiError {
         code,
-        extra: String::from("undefined"),
+        error: String::from("undefined"),
     };
 }
 
 #[allow(dead_code)]
-pub fn app_error2(code: ApiErrorCode, extra: String) -> ApiError {
-    return ApiError { code, extra };
+pub fn api_error2(code: ApiErrorCode, extra: &str) -> ApiError {
+    return ApiError {
+        code,
+        error: String::from(extra),
+    };
 }
 
 pub struct ApiSuccess<T> {
@@ -46,20 +49,21 @@ where
 #[allow(dead_code)]
 pub enum ApiErrorCode {
     Success = 0,
+    InvalidToken = 2001,
     UserOrPasswordFailed = 3001,
     Unexpected = 9999,
 }
 
 pub struct ApiError {
     code: ApiErrorCode,
-    extra: String,
+    error: String,
 }
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let body = Json(json!({
             "code": self.code as i32,
-            "error": self.extra
+            "error": self.error
         }));
         (StatusCode::OK, body).into_response()
     }

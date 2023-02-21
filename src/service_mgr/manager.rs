@@ -3,7 +3,8 @@ use axum::{
     Json, Router,
 };
 
-use crate::common::web::*;
+use super::base::*;
+use crate::shared::web::*;
 use serde::{Deserialize, Serialize};
 
 async fn root() -> &'static str {
@@ -14,6 +15,7 @@ pub fn setup_routers() -> Router {
     Router::new()
         .route("/", get(root))
         .route("/login", post(manager_login))
+        .route("/detail", get(manager_detail))
 }
 
 #[derive(Deserialize)]
@@ -31,12 +33,23 @@ async fn manager_login(
     Json(payload): Json<ManagerLoginPayload>,
 ) -> Result<ApiSuccess<ManagerLoginResponse>, ApiError> {
     if !payload.username.eq("admin") || !payload.password.eq("admin") {
-        return Err(app_error(ApiErrorCode::UserOrPasswordFailed));
+        return Err(api_error(ApiErrorCode::UserOrPasswordFailed));
     }
 
-    let res = ManagerLoginResponse {
-        token: String::from("ok"),
-    };
+    let token = build_mgr_token(MgrClaims { mgr_id: 999 })?;
 
-    Ok(app_success(res))
+    Ok(api_success(ManagerLoginResponse { token }))
+}
+
+#[derive(Serialize)]
+struct ManagerDetailResponse {
+    id: u64,
+    username: String,
+}
+
+async fn manager_detail(claims: MgrClaims) -> Result<ApiSuccess<ManagerDetailResponse>, ApiError> {
+    Ok(api_success(ManagerDetailResponse {
+        id: claims.mgr_id,
+        username: String::from("admin"),
+    }))
 }

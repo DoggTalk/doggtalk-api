@@ -1,5 +1,6 @@
 use axum::{routing::get, Router};
 
+mod base;
 mod manager;
 
 async fn root() -> &'static str {
