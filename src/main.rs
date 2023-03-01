@@ -1,12 +1,14 @@
 use axum::{http::StatusCode, routing::get, Router};
 use std::net::SocketAddr;
 
-mod shared;
 mod service_mgr;
 mod service_sdk;
+mod shared;
 
 #[tokio::main]
 async fn main() {
+    shared::init();
+
     let app = Router::new()
         .route("/", get(root))
         .nest("/sdk", service_sdk::setup_routers())

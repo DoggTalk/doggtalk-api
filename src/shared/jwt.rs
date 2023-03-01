@@ -1,7 +1,7 @@
+use chrono::prelude::Utc;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::time::SystemTime;
 
 use super::web::*;
 
@@ -34,10 +34,11 @@ struct Claims {
 }
 
 fn timestamp() -> u64 {
-    return SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
+    return Utc::now().timestamp() as u64;
+}
+
+pub fn init() {
+    Lazy::force(&JWT_KEYS);
 }
 
 pub fn jwt_build(tc: &str, v: String) -> Result<String, ApiError> {
@@ -57,15 +58,11 @@ pub fn jwt_parse(tc: &str, token: &str) -> Result<String, ApiError> {
     validation.required_spec_claims.clear();
 
     let res = decode::<Claims>(token, &JWT_KEYS.decoding, &validation)
-        .map_err(|_| api_error(ApiErrorCode::InvalidToken));
-    match res {
-        Err(e) => return Err(e),
-        Ok(o) => {
-            if o.claims.tc != tc || o.claims.ts + JWT_TTL <= timestamp() {
-                return Err(api_error(ApiErrorCode::InvalidToken));
-            } else {
-                return Ok(o.claims.v);
-            }
-        }
+        .map_err(|_| api_error(ApiErrorCode::InvalidToken))?;
+
+    if res.claims.tc != tc || res.claims.ts + JWT_TTL <= timestamp() {
+        return Err(api_error(ApiErrorCode::InvalidToken));
+    } else {
+        return Ok(res.claims.v);
     }
 }

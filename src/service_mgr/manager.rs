@@ -4,6 +4,9 @@ use axum::{
 };
 
 use super::base::*;
+use crate::shared::data::*;
+use crate::shared::hash::*;
+use crate::shared::model::*;
 use crate::shared::web::*;
 use serde::{Deserialize, Serialize};
 
@@ -32,24 +35,32 @@ struct ManagerLoginResponse {
 async fn manager_login(
     Json(payload): Json<ManagerLoginPayload>,
 ) -> Result<ApiSuccess<ManagerLoginResponse>, ApiError> {
-    if !payload.username.eq("admin") || !payload.password.eq("admin") {
-        return Err(api_error(ApiErrorCode::UserOrPasswordFailed));
+    let conn = database_connect().await?;
+
+    let manager = manager::get_by_username(conn, &payload.username).await?;
+    if manager.is_none() {
+        return Err(api_error(ApiErrorCode::AccountOrPasswordFailed));
     }
 
-    let token = build_mgr_token(MgrClaims { mgr_id: 999 })?;
+    let manager = manager.unwrap();
+    if !verify_hash(&payload.password, &manager.password) {
+        return Err(api_error(ApiErrorCode::AccountOrPasswordFailed));
+    }
 
-    Ok(api_success(ManagerLoginResponse { token }))
+    Ok(api_success(ManagerLoginResponse {
+        token: build_mgr_token(MgrClaims { mgr_id: manager.id })?,
+    }))
 }
 
 #[derive(Serialize)]
 struct ManagerDetailResponse {
-    id: u64,
-    username: String,
+    manager: manager::ManagerModel,
 }
 
 async fn manager_detail(claims: MgrClaims) -> Result<ApiSuccess<ManagerDetailResponse>, ApiError> {
-    Ok(api_success(ManagerDetailResponse {
-        id: claims.mgr_id,
-        username: String::from("admin"),
-    }))
+    let conn = database_connect().await?;
+
+    let manager = manager::get_by_id(conn, claims.mgr_id).await?;
+
+    Ok(api_success(ManagerDetailResponse { manager }))
 }

@@ -32,7 +32,7 @@ where
         let mgr_id =
             u64::from_str_radix(&res, 10).map_err(|_| api_error(ApiErrorCode::InvalidToken))?;
 
-        return Ok(MgrClaims { mgr_id });
+        return Ok(Self { mgr_id });
     }
 }
 

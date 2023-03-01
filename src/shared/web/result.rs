@@ -3,6 +3,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use std::error::Error;
 
 use serde::Serialize;
 use serde_json::json;
@@ -28,6 +29,14 @@ pub fn api_error2(code: ApiErrorCode, extra: &str) -> ApiError {
     };
 }
 
+#[allow(dead_code)]
+pub fn api_errore(code: ApiErrorCode, e: &dyn Error) -> ApiError {
+    return ApiError {
+        code,
+        error: String::from(e.to_string()),
+    };
+}
+
 pub struct ApiSuccess<T> {
     data: T,
 }
@@ -49,8 +58,13 @@ where
 #[allow(dead_code)]
 pub enum ApiErrorCode {
     Success = 0,
-    InvalidToken = 2001,
-    UserOrPasswordFailed = 3001,
+    // inner error
+    InvalidDatabase = 1001,
+    // public error
+    InvalidSign = 2001,
+    InvalidToken = 2002,
+    AccountNotFound = 3001,
+    AccountOrPasswordFailed = 3002,
     Unexpected = 9999,
 }
 
