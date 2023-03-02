@@ -1,8 +1,8 @@
-use chrono::prelude::Utc;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
+use super::base::timestamp;
 use super::web::*;
 
 static JWT_KEYS: Lazy<Keys> = Lazy::new(|| {
@@ -31,10 +31,6 @@ struct Claims {
     tc: String,
     v: String,
     ts: u64,
-}
-
-fn timestamp() -> u64 {
-    return Utc::now().timestamp() as u64;
 }
 
 pub fn init() {

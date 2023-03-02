@@ -16,7 +16,7 @@ pub async fn get_by_username(
     mut conn: SqlConnection,
     username: &str,
 ) -> Result<Option<ManagerModel>, ApiError> {
-    let res = sqlx::query_as::<_, ManagerModel>("select * from `manager` where username=?")
+    let res = sqlx::query_as::<_, ManagerModel>("select * from dg_manager where username=?")
         .bind(username)
         .fetch_optional(&mut conn)
         .await
@@ -26,7 +26,7 @@ pub async fn get_by_username(
 }
 
 pub async fn get_by_id(mut conn: SqlConnection, id: u64) -> Result<ManagerModel, ApiError> {
-    let res = sqlx::query_as::<_, ManagerModel>("select * from `manager` where id=?")
+    let res = sqlx::query_as::<_, ManagerModel>("select * from dg_manager where id=?")
         .bind(id)
         .fetch_optional(&mut conn)
         .await
