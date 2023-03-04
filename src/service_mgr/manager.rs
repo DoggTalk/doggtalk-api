@@ -2,13 +2,13 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use serde::{Deserialize, Serialize};
 
 use super::base::*;
 use crate::shared::data::*;
 use crate::shared::hash::*;
 use crate::shared::model::*;
 use crate::shared::web::*;
-use serde::{Deserialize, Serialize};
 
 async fn root() -> &'static str {
     "DoggTalk MGR Manager API"
@@ -35,9 +35,9 @@ struct ManagerLoginResponse {
 async fn manager_login(
     Json(payload): Json<ManagerLoginPayload>,
 ) -> Result<ApiSuccess<ManagerLoginResponse>, ApiError> {
-    let conn = database_connect().await?;
+    let mut conn = database_connect().await?;
 
-    let manager = manager::get_by_username(conn, &payload.username).await?;
+    let manager = manager::get_by_username(&mut conn, &payload.username).await?;
     if manager.is_none() {
         return Err(api_error(ApiErrorCode::AccountOrPasswordFailed));
     }
@@ -58,9 +58,9 @@ struct ManagerDetailResponse {
 }
 
 async fn manager_detail(claims: MgrClaims) -> Result<ApiSuccess<ManagerDetailResponse>, ApiError> {
-    let conn = database_connect().await?;
+    let mut conn = database_connect().await?;
 
-    let manager = manager::get_by_id(conn, claims.mgr_id).await?;
+    let manager = manager::get_by_id(&mut conn, claims.mgr_id).await?;
 
     Ok(api_success(ManagerDetailResponse { manager }))
 }

@@ -29,5 +29,5 @@ pub async fn database_connect() -> Result<SqlConnection, ApiError> {
     MYSQL_POOL
         .acquire()
         .await
-        .map_err(|_| api_error(ApiErrorCode::InvalidDatabase))
+        .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))
 }

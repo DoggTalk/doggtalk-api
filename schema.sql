@@ -19,3 +19,21 @@ CREATE TABLE dg_app (
   PRIMARY KEY (id),
   UNIQUE KEY UK_app_key (app_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 AUTO_INCREMENT=1000;
+
+/*
+    source - 0-Fake,1-Sync
+    status - 0-Pendding,1-Active,2-Ban
+*/
+
+CREATE TABLE dg_user (
+  id bigint unsigned NOT NULL AUTO_INCREMENT,
+  app_id bigint unsigned NOT NULL,
+  `source` tinyint NOT NULL,
+  account varchar(128) NOT NULL,
+  display_name varchar(128) NOT NULL,
+  status tinyint NOT NULL,
+  avatar_url varchar(2048) NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY UK_user_account (app_id,`source`,account)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 AUTO_INCREMENT=1000;

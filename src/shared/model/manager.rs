@@ -13,22 +13,22 @@ pub struct ManagerModel {
 }
 
 pub async fn get_by_username(
-    mut conn: SqlConnection,
+    conn: &mut SqlConnection,
     username: &str,
 ) -> Result<Option<ManagerModel>, ApiError> {
     let res = sqlx::query_as::<_, ManagerModel>("select * from dg_manager where username=?")
         .bind(username)
-        .fetch_optional(&mut conn)
+        .fetch_optional(conn)
         .await
         .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
 
     Ok(res)
 }
 
-pub async fn get_by_id(mut conn: SqlConnection, id: u64) -> Result<ManagerModel, ApiError> {
+pub async fn get_by_id(conn: &mut SqlConnection, id: u64) -> Result<ManagerModel, ApiError> {
     let res = sqlx::query_as::<_, ManagerModel>("select * from dg_manager where id=?")
         .bind(id)
-        .fetch_optional(&mut conn)
+        .fetch_optional(conn)
         .await
         .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
 

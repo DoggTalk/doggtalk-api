@@ -3,12 +3,12 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use serde::{Deserialize, Serialize};
 
 use super::base::*;
 use crate::shared::data::*;
 use crate::shared::model::*;
 use crate::shared::web::*;
-use serde::{Deserialize, Serialize};
 
 async fn root() -> &'static str {
     "DoggTalk MGR App API"
@@ -37,7 +37,7 @@ struct AppCreateResponse {
 async fn app_create(
     Json(payload): Json<AppCreatePayload>,
 ) -> Result<ApiSuccess<AppCreateResponse>, ApiError> {
-    let conn = database_connect().await?;
+    let mut conn = database_connect().await?;
 
     let app = app::AppModel {
         id: 0,
@@ -48,7 +48,7 @@ async fn app_create(
         created_at: SqlDateTime::MIN,
     };
 
-    let res = app::create(conn, app).await?;
+    let res = app::create(&mut conn, app).await?;
 
     Ok(api_success(AppCreateResponse { app_id: res }))
 }
@@ -67,9 +67,9 @@ async fn app_detail(
     _claims: MgrClaims,
     Query(payload): Query<AppDetailPayload>,
 ) -> Result<ApiSuccess<AppDetailResponse>, ApiError> {
-    let conn = database_connect().await?;
+    let mut conn = database_connect().await?;
 
-    let app = app::get_by_id(conn, payload.app_id).await?;
+    let app = app::get_by_id(&mut conn, payload.app_id).await?;
 
     Ok(api_success(AppDetailResponse { app }))
 }
@@ -90,9 +90,9 @@ async fn app_list(
     _claims: MgrClaims,
     Query(payload): Query<AppListPayload>,
 ) -> Result<ApiSuccess<AppListResponse>, ApiError> {
-    let conn = database_connect().await?;
+    let mut conn = database_connect().await?;
 
-    let (total, apps) = app::fetch_more(conn, payload.cursor, payload.count).await?;
+    let (total, apps) = app::fetch_more(&mut conn, payload.cursor, payload.count).await?;
 
     Ok(api_success(AppListResponse { total, apps }))
 }
@@ -103,9 +103,9 @@ struct AppListAllResponse {
 }
 
 async fn app_list_all(_claims: MgrClaims) -> Result<ApiSuccess<AppListAllResponse>, ApiError> {
-    let conn = database_connect().await?;
+    let mut conn = database_connect().await?;
 
-    let apps = app::fetch_simple_all(conn).await?;
+    let apps = app::fetch_simple_all(&mut conn).await?;
 
     Ok(api_success(AppListAllResponse { apps }))
 }

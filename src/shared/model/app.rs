@@ -1,8 +1,8 @@
+use serde::Serialize;
+
 use crate::shared::base::timestamp;
 use crate::shared::data::*;
 use crate::shared::web::*;
-
-use serde::Serialize;
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct AppModel {
@@ -32,10 +32,10 @@ pub fn build_key() -> String {
     out
 }
 
-pub async fn get_by_id(mut conn: SqlConnection, id: u64) -> Result<AppModel, ApiError> {
+pub async fn get_by_id(conn: &mut SqlConnection, id: u64) -> Result<AppModel, ApiError> {
     let res = sqlx::query_as::<_, AppModel>("select * from dg_app where id=?")
         .bind(id)
-        .fetch_optional(&mut conn)
+        .fetch_optional(conn)
         .await
         .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
 
@@ -46,13 +46,13 @@ pub async fn get_by_id(mut conn: SqlConnection, id: u64) -> Result<AppModel, Api
     Ok(res.unwrap())
 }
 
-pub async fn create(mut conn: SqlConnection, app: AppModel) -> Result<u64, ApiError> {
+pub async fn create(conn: &mut SqlConnection, app: AppModel) -> Result<u64, ApiError> {
     let res = sqlx::query("insert into dg_app(app_key,app_secret,name,icon_url) values(?,?,?,?)")
         .bind(app.app_key)
         .bind(app.app_secret)
         .bind(app.name)
         .bind(app.icon_url)
-        .execute(&mut conn)
+        .execute(conn)
         .await
         .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
 
@@ -60,29 +60,29 @@ pub async fn create(mut conn: SqlConnection, app: AppModel) -> Result<u64, ApiEr
 }
 
 pub async fn fetch_more(
-    mut conn: SqlConnection,
+    conn: &mut SqlConnection,
     cursor: u32,
     count: u32,
 ) -> Result<(u32, Vec<AppModel>), ApiError> {
     let res = sqlx::query_as::<_, AppModel>("select * from dg_app order by id desc limit ?,?")
         .bind(cursor)
         .bind(count)
-        .fetch_all(&mut conn)
+        .fetch_all(conn.as_mut())
         .await
         .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
 
     let total: (i64,) = sqlx::query_as("select count(*) from dg_app")
-        .fetch_one(&mut conn)
+        .fetch_one(conn.as_mut())
         .await
         .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
 
     Ok((total.0 as u32, res))
 }
 
-pub async fn fetch_simple_all(mut conn: SqlConnection) -> Result<Vec<AppSimple>, ApiError> {
+pub async fn fetch_simple_all(conn: &mut SqlConnection) -> Result<Vec<AppSimple>, ApiError> {
     let res =
         sqlx::query_as::<_, AppSimple>("select id,app_key,name,icon_url from dg_app order by id")
-            .fetch_all(&mut conn)
+            .fetch_all(conn)
             .await
             .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
 
