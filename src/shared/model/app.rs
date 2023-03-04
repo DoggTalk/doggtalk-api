@@ -22,6 +22,19 @@ pub struct AppSimple {
     pub icon_url: String,
 }
 
+impl Default for AppModel {
+    fn default() -> AppModel {
+        AppModel {
+            id: 0,
+            app_key: String::new(),
+            app_secret: String::new(),
+            name: String::new(),
+            icon_url: String::new(),
+            created_at: SqlDateTime::MIN,
+        }
+    }
+}
+
 pub fn build_key() -> String {
     let ts = timestamp();
     let r = rand::random::<u16>();

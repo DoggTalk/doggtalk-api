@@ -40,12 +40,11 @@ async fn app_create(
     let mut conn = database_connect().await?;
 
     let app = app::AppModel {
-        id: 0,
         app_key: app::build_key(),
         app_secret: uuid::Uuid::new_v4().to_string(),
         name: payload.name,
         icon_url: payload.icon_url,
-        created_at: SqlDateTime::MIN,
+        ..Default::default()
     };
 
     let res = app::create(&mut conn, app).await?;

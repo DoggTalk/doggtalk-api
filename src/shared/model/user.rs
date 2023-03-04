@@ -3,6 +3,10 @@ use crate::shared::web::*;
 
 use serde::Serialize;
 
+pub const SOURCE_FAKE: i8 = 0;
+pub const SOURCE_SYNC: i8 = 1;
+pub const STATUS_ACTIVED: i8 = 1;
+
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct UserModel {
     pub id: u64,
@@ -28,6 +32,21 @@ impl UserModel {
             id: self.id,
             display_name: self.display_name.clone(),
             avatar_url: self.avatar_url.clone(),
+        }
+    }
+}
+
+impl Default for UserModel {
+    fn default() -> UserModel {
+        UserModel {
+            id: 0,
+            app_id: 0,
+            source: SOURCE_SYNC,
+            account: String::new(),
+            display_name: String::new(),
+            avatar_url: String::new(),
+            status: STATUS_ACTIVED,
+            created_at: SqlDateTime::MIN,
         }
     }
 }

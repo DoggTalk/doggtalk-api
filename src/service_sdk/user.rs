@@ -57,14 +57,12 @@ async fn user_sync_login(
     let mut user: user::UserModel;
     if exists_user.is_none() {
         user = user::UserModel {
-            id: 0,
             app_id: app.id,
-            source: 1,
+            source: user::SOURCE_SYNC,
             account: payload.account,
-            status: 1,
             display_name: payload.display_name,
             avatar_url: payload.avatar_url,
-            created_at: SqlDateTime::MIN,
+            ..Default::default()
         };
 
         let user_id = user::create(&mut conn, &mut user).await?;

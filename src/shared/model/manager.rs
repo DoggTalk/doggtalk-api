@@ -12,6 +12,17 @@ pub struct ManagerModel {
     pub created_at: SqlDateTime,
 }
 
+impl Default for ManagerModel {
+    fn default() -> ManagerModel {
+        ManagerModel {
+            id: 0,
+            username: String::new(),
+            password: String::new(),
+            created_at: SqlDateTime::MIN,
+        }
+    }
+}
+
 pub async fn get_by_username(
     conn: &mut SqlConnection,
     username: &str,
