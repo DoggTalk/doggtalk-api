@@ -65,7 +65,10 @@ pub enum ApiErrorCode {
     InvalidToken = 2002,
     AccountNotFound = 3001,
     AccountOrPasswordFailed = 3002,
+    NoPermission = 3003,
     AppNotFound = 4001,
+    TopicNotFound = 5001,
+    ReplyNotFound = 5101,
     Unexpected = 9999,
 }
 

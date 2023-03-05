@@ -19,7 +19,18 @@ pub struct AppSimple {
     pub id: u64,
     pub app_key: String,
     pub name: String,
-    pub icon_url: String,
+    pub icon_url: Option<String>,
+}
+
+impl AppModel {
+    pub fn to_simple(self: &Self) -> AppSimple {
+        AppSimple {
+            id: self.id,
+            app_key: self.app_key.clone(),
+            name: self.name.clone(),
+            icon_url: self.icon_url.clone(),
+        }
+    }
 }
 
 impl Default for AppModel {
@@ -48,6 +59,20 @@ pub fn build_key() -> String {
 pub async fn get_by_id(conn: &mut SqlConnection, id: u64) -> Result<AppModel, ApiError> {
     let res = sqlx::query_as::<_, AppModel>("select * from dg_apps where id=?")
         .bind(id)
+        .fetch_optional(conn)
+        .await
+        .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
+
+    if res.is_none() {
+        return Err(api_error(ApiErrorCode::AppNotFound));
+    }
+
+    Ok(res.unwrap())
+}
+
+pub async fn get_by_key(conn: &mut SqlConnection, app_key: &str) -> Result<AppModel, ApiError> {
+    let res = sqlx::query_as::<_, AppModel>("select * from dg_apps where app_key=?")
+        .bind(app_key)
         .fetch_optional(conn)
         .await
         .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
