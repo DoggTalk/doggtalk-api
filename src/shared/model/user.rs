@@ -14,7 +14,7 @@ pub struct UserModel {
     pub source: i8,
     pub account: String,
     pub display_name: String,
-    pub avatar_url: String,
+    pub avatar_url: Option<String>,
     pub status: i8,
     pub created_at: SqlDateTime,
 }
@@ -23,7 +23,7 @@ pub struct UserModel {
 pub struct UserSimple {
     pub id: u64,
     pub display_name: String,
-    pub avatar_url: String,
+    pub avatar_url: Option<String>,
 }
 
 impl UserModel {
@@ -44,7 +44,7 @@ impl Default for UserModel {
             source: SOURCE_SYNC,
             account: String::new(),
             display_name: String::new(),
-            avatar_url: String::new(),
+            avatar_url: None,
             status: STATUS_ACTIVED,
             created_at: SqlDateTime::MIN,
         }
@@ -52,7 +52,7 @@ impl Default for UserModel {
 }
 
 pub async fn get_by_id(conn: &mut SqlConnection, id: u64) -> Result<UserModel, ApiError> {
-    let res = sqlx::query_as::<_, UserModel>("select * from dg_user where id=?")
+    let res = sqlx::query_as::<_, UserModel>("select * from dg_users where id=?")
         .bind(id)
         .fetch_optional(conn)
         .await
@@ -72,7 +72,7 @@ pub async fn get_by_account(
     account: &str,
 ) -> Result<Option<UserModel>, ApiError> {
     let res = sqlx::query_as::<_, UserModel>(
-        "select * from dg_user where app_id=? and source=? and account=?",
+        "select * from dg_users where app_id=? and source=? and account=?",
     )
     .bind(app_id)
     .bind(source)
@@ -86,7 +86,7 @@ pub async fn get_by_account(
 
 pub async fn create(conn: &mut SqlConnection, user: &mut UserModel) -> Result<u64, ApiError> {
     let res = sqlx::query(
-        "insert into dg_user(app_id,source,account,display_name,avatar_url,status) values(?,?,?,?,?,?)",
+        "insert into dg_users(app_id,source,account,display_name,avatar_url,status) values(?,?,?,?,?,?)",
     )
     .bind(user.app_id)
     .bind(user.source)
@@ -105,7 +105,7 @@ pub async fn update_profile(
     conn: &mut SqlConnection,
     user: &mut UserModel,
 ) -> Result<(), ApiError> {
-    sqlx::query("update dg_user set display_name=?,avatar_url=? where id=?")
+    sqlx::query("update dg_users set display_name=?,avatar_url=? where id=?")
         .bind(&user.display_name)
         .bind(&user.avatar_url)
         .bind(user.id)

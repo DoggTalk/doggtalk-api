@@ -10,7 +10,7 @@ pub struct AppModel {
     pub app_key: String,
     pub app_secret: String,
     pub name: String,
-    pub icon_url: String,
+    pub icon_url: Option<String>,
     pub created_at: SqlDateTime,
 }
 
@@ -29,7 +29,7 @@ impl Default for AppModel {
             app_key: String::new(),
             app_secret: String::new(),
             name: String::new(),
-            icon_url: String::new(),
+            icon_url: None,
             created_at: SqlDateTime::MIN,
         }
     }
@@ -46,7 +46,7 @@ pub fn build_key() -> String {
 }
 
 pub async fn get_by_id(conn: &mut SqlConnection, id: u64) -> Result<AppModel, ApiError> {
-    let res = sqlx::query_as::<_, AppModel>("select * from dg_app where id=?")
+    let res = sqlx::query_as::<_, AppModel>("select * from dg_apps where id=?")
         .bind(id)
         .fetch_optional(conn)
         .await
@@ -60,7 +60,7 @@ pub async fn get_by_id(conn: &mut SqlConnection, id: u64) -> Result<AppModel, Ap
 }
 
 pub async fn create(conn: &mut SqlConnection, app: AppModel) -> Result<u64, ApiError> {
-    let res = sqlx::query("insert into dg_app(app_key,app_secret,name,icon_url) values(?,?,?,?)")
+    let res = sqlx::query("insert into dg_apps(app_key,app_secret,name,icon_url) values(?,?,?,?)")
         .bind(app.app_key)
         .bind(app.app_secret)
         .bind(app.name)
@@ -77,14 +77,14 @@ pub async fn fetch_more(
     cursor: u32,
     count: u32,
 ) -> Result<(u32, Vec<AppModel>), ApiError> {
-    let res = sqlx::query_as::<_, AppModel>("select * from dg_app order by id desc limit ?,?")
+    let res = sqlx::query_as::<_, AppModel>("select * from dg_apps order by id desc limit ?,?")
         .bind(cursor)
         .bind(count)
         .fetch_all(conn.as_mut())
         .await
         .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
 
-    let total: (i64,) = sqlx::query_as("select count(*) from dg_app")
+    let total: (i64,) = sqlx::query_as("select count(*) from dg_apps")
         .fetch_one(conn.as_mut())
         .await
         .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
@@ -94,7 +94,7 @@ pub async fn fetch_more(
 
 pub async fn fetch_simple_all(conn: &mut SqlConnection) -> Result<Vec<AppSimple>, ApiError> {
     let res =
-        sqlx::query_as::<_, AppSimple>("select id,app_key,name,icon_url from dg_app order by id")
+        sqlx::query_as::<_, AppSimple>("select id,app_key,name,icon_url from dg_apps order by id")
             .fetch_all(conn)
             .await
             .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;

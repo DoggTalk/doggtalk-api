@@ -27,7 +27,7 @@ struct UserSyncLoginPayload {
     app_id: u64,
     account: String,
     display_name: String,
-    avatar_url: String,
+    avatar_url: Option<String>,
     safe_sign: String,
 }
 
@@ -70,7 +70,9 @@ async fn user_sync_login(
     } else {
         user = exists_user.unwrap();
         user.display_name = payload.display_name;
-        user.avatar_url = payload.avatar_url;
+        if payload.avatar_url.is_some() {
+            user.avatar_url = payload.avatar_url;
+        }
         user::update_profile(&mut conn, &mut user).await?
     }
 
@@ -99,7 +101,7 @@ async fn user_detail(claims: UserClaims) -> Result<ApiSuccess<UserDetailResponse
 #[derive(Deserialize)]
 struct UserUpdateProfilePayload {
     display_name: String,
-    avatar_url: String,
+    avatar_url: Option<String>,
 }
 
 async fn user_update_profile(
@@ -110,7 +112,9 @@ async fn user_update_profile(
 
     let mut user = user::get_by_id(&mut conn, claims.user_id).await?;
     user.display_name = payload.display_name;
-    user.avatar_url = payload.avatar_url;
+    if payload.avatar_url.is_some() {
+        user.avatar_url = payload.avatar_url;
+    }
     user::update_profile(&mut conn, &mut user).await?;
 
     Ok(api_success(UserDetailResponse { user }))

@@ -26,7 +26,7 @@ pub fn setup_routers() -> Router {
 #[derive(Deserialize)]
 struct AppCreatePayload {
     name: String,
-    icon_url: String,
+    icon_url: Option<String>,
 }
 
 #[derive(Serialize)]
