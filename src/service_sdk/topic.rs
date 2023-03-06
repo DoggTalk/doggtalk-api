@@ -110,7 +110,7 @@ struct TopicListPayload {
 #[derive(Serialize)]
 struct TopicListItem {
     topic: topic::TopicSimple,
-    user: Option<user::UserSimple>,
+    user: user::UserSimple,
 }
 
 #[derive(Serialize)]
@@ -141,17 +141,12 @@ async fn topic_list(
 
     let topics = topics
         .iter()
-        .map(|s| {
-            let mut out: Option<user::UserSimple> = None;
-            let source = user_map.get(&s.user_id);
-            if source.is_some() {
-                let source = source.unwrap();
-                out = Some(source.clone());
-            }
-            TopicListItem {
-                user: out,
-                topic: s.to_simple(),
-            }
+        .map(|s| TopicListItem {
+            user: match user_map.get(&s.user_id) {
+                Some(v) => v.clone(),
+                _ => Default::default(),
+            },
+            topic: s.to_simple(),
         })
         .collect();
 

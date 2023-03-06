@@ -85,7 +85,7 @@ struct ReplyListPayload {
 #[derive(Serialize)]
 struct ReplyListItem {
     reply: reply::ReplySimple,
-    user: Option<user::UserSimple>,
+    user: user::UserSimple,
 }
 
 #[derive(Serialize)]
@@ -112,17 +112,12 @@ async fn reply_list(
 
     let replies = replies
         .iter()
-        .map(|s| {
-            let mut out: Option<user::UserSimple> = None;
-            let source = user_map.get(&s.user_id);
-            if source.is_some() {
-                let source = source.unwrap();
-                out = Some(source.clone());
-            }
-            ReplyListItem {
-                user: out,
-                reply: s.to_simple(),
-            }
+        .map(|s| ReplyListItem {
+            user: match user_map.get(&s.user_id) {
+                Some(v) => v.clone(),
+                _ => Default::default(),
+            },
+            reply: s.to_simple(),
         })
         .collect();
 

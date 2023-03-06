@@ -6,6 +6,7 @@ use crate::shared::web::*;
 
 pub const SOURCE_FAKE: i8 = 0;
 pub const SOURCE_SYNC: i8 = 1;
+pub const STATUS_PENDING: i8 = 0;
 pub const STATUS_ACTIVED: i8 = 1;
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
@@ -56,6 +57,17 @@ impl Default for UserModel {
             status: STATUS_ACTIVED,
             created_at: SqlDateTime::MIN,
             topic_count: 0,
+        }
+    }
+}
+
+impl Default for UserSimple {
+    fn default() -> UserSimple {
+        UserSimple {
+            id: 0,
+            display_name: String::new(),
+            avatar_url: None,
+            status: STATUS_PENDING,
         }
     }
 }
