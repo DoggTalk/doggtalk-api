@@ -66,6 +66,7 @@ pub enum ApiErrorCode {
     AccountNotFound = 3001,
     AccountOrPasswordFailed = 3002,
     NoPermission = 3003,
+    AccountNotActived = 3004,
     AppNotFound = 4001,
     TopicNotFound = 5001,
     ReplyNotFound = 5101,

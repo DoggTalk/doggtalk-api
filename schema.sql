@@ -34,6 +34,7 @@ CREATE TABLE dg_users (
   status tinyint NOT NULL,
   avatar_url varchar(2048),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  topic_count bigint unsigned DEFAULT 0,
   PRIMARY KEY (id),
   UNIQUE KEY UK_user_account (app_id,`source`,account)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 AUTO_INCREMENT=1000;
@@ -52,7 +53,7 @@ CREATE TABLE dg_topics (
   topped bigint unsigned NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   refreshed_at DATETIME NOT NULL,
-  reply_count bigint unsigned NOT NULL,
+  reply_count bigint unsigned NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
   KEY IX_topic_user (user_id,topped),
   KEY IX_topic_create (app_id,category,topped,created_at),

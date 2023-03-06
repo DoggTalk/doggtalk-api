@@ -19,6 +19,7 @@ pub fn setup_routers() -> Router {
         .route("/", get(root))
         .route("/create", post(topic_create))
         .route("/detail", get(topic_detail))
+        .route("/list", get(topic_list))
 }
 
 #[derive(Deserialize)]
@@ -44,11 +45,17 @@ async fn topic_create(
         return Err(api_error(ApiErrorCode::NoPermission));
     }
 
-    let app = app::get_by_id(&mut conn, payload.app_id).await?;
+    let user = user::get_by_id(&mut conn, claims.user_id).await?;
+    if !user.is_actived() {
+        return Err(api_error(ApiErrorCode::AccountNotActived));
+    }
+    if payload.app_id != user.app_id {
+        return Err(api_error(ApiErrorCode::NoPermission));
+    }
 
     let mut topic = topic::TopicModel {
-        app_id: app.id,
-        user_id: claims.user_id,
+        app_id: user.app_id,
+        user_id: user.id,
         category: payload.category,
         title: payload.title,
         content: payload.content,
@@ -56,6 +63,8 @@ async fn topic_create(
     };
 
     let topic_id = topic::create(&mut conn, &mut topic).await?;
+    user::update_topic_count(&mut conn, claims.user_id).await?;
+
     let topic = topic::get_by_id(&mut conn, topic_id).await?;
 
     Ok(api_success(TopicCreateResponse {
@@ -87,4 +96,64 @@ async fn topic_detail(
     Ok(api_success(TopicDetailResponse {
         topic: topic.to_simple(),
     }))
+}
+
+#[derive(Deserialize)]
+struct TopicListPayload {
+    app_id: u64,
+    category: u64,
+    order_by: topic::VisiblesOrderBy,
+    cursor: u32,
+    count: u32,
+}
+
+#[derive(Serialize)]
+struct TopicListItem {
+    topic: topic::TopicSimple,
+    user: Option<user::UserSimple>,
+}
+
+#[derive(Serialize)]
+struct TopicListResponse {
+    total: u32,
+    topics: Vec<TopicListItem>,
+}
+
+async fn topic_list(
+    Query(payload): Query<TopicListPayload>,
+) -> Result<ApiSuccess<TopicListResponse>, ApiError> {
+    let mut conn = database_connect().await?;
+
+    app::get_by_id(&mut conn, payload.app_id).await?;
+
+    let (total, topics) = topic::fetch_visibles(
+        &mut conn,
+        payload.app_id,
+        payload.category,
+        payload.order_by,
+        payload.cursor,
+        payload.count,
+    )
+    .await?;
+
+    let user_map =
+        user::get_simple_map_by_ids(&mut conn, topics.iter().map(|s| s.user_id).collect()).await?;
+
+    let topics = topics
+        .iter()
+        .map(|s| {
+            let mut out: Option<user::UserSimple> = None;
+            let source = user_map.get(&s.user_id);
+            if source.is_some() {
+                let source = source.unwrap();
+                out = Some(source.clone());
+            }
+            TopicListItem {
+                user: out,
+                topic: s.to_simple(),
+            }
+        })
+        .collect();
+
+    Ok(api_success(TopicListResponse { total, topics }))
 }

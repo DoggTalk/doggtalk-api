@@ -43,17 +43,23 @@ async fn reply_create(
         return Err(api_error(ApiErrorCode::NoPermission));
     }
 
+    let user = user::get_by_id(&mut conn, claims.user_id).await?;
+    if !user.is_actived() {
+        return Err(api_error(ApiErrorCode::AccountNotActived));
+    }
+    if payload.app_id != user.app_id {
+        return Err(api_error(ApiErrorCode::NoPermission));
+    }
+
     let topic = topic::get_by_id(&mut conn, payload.topic_id).await?;
     if payload.app_id != topic.app_id {
         return Err(api_error(ApiErrorCode::NoPermission));
     }
 
-    let app = app::get_by_id(&mut conn, payload.app_id).await?;
-
     let mut reply = reply::ReplyModel {
-        app_id: app.id,
+        app_id: topic.app_id,
         topic_id: topic.id,
-        user_id: claims.user_id,
+        user_id: user.id,
         content: payload.content,
         ..Default::default()
     };
@@ -77,9 +83,15 @@ struct ReplyListPayload {
 }
 
 #[derive(Serialize)]
+struct ReplyListItem {
+    reply: reply::ReplySimple,
+    user: Option<user::UserSimple>,
+}
+
+#[derive(Serialize)]
 struct ReplyListResponse {
     total: u32,
-    replies: Vec<reply::ReplySimple>,
+    replies: Vec<ReplyListItem>,
 }
 
 async fn reply_list(
@@ -95,7 +107,24 @@ async fn reply_list(
     let (total, replies) =
         reply::fetch_visibles(&mut conn, topic.id, payload.cursor, payload.count).await?;
 
-    let replies = replies.iter().map(|s| s.to_simple()).collect();
+    let user_map =
+        user::get_simple_map_by_ids(&mut conn, replies.iter().map(|s| s.user_id).collect()).await?;
+
+    let replies = replies
+        .iter()
+        .map(|s| {
+            let mut out: Option<user::UserSimple> = None;
+            let source = user_map.get(&s.user_id);
+            if source.is_some() {
+                let source = source.unwrap();
+                out = Some(source.clone());
+            }
+            ReplyListItem {
+                user: out,
+                reply: s.to_simple(),
+            }
+        })
+        .collect();
 
     Ok(api_success(ReplyListResponse { total, replies }))
 }

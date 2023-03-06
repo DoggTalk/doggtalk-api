@@ -84,7 +84,7 @@ pub async fn fetch_visibles(
     cursor: u32,
     count: u32,
 ) -> Result<(u32, Vec<ReplyModel>), ApiError> {
-    let res = sqlx::query_as::<_, ReplyModel>(
+    let replies = sqlx::query_as::<_, ReplyModel>(
         "select * from dg_replies where topic_id=? and topped>=0 order by topped desc,created_at desc limit ?,?",
     )
     .bind(topic_id)
@@ -100,5 +100,5 @@ pub async fn fetch_visibles(
         .await
         .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
 
-    Ok((total.0 as u32, res))
+    Ok((total.0 as u32, replies))
 }

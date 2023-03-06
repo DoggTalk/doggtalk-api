@@ -1,7 +1,8 @@
+use serde::Serialize;
+use std::collections::HashMap;
+
 use crate::shared::data::*;
 use crate::shared::web::*;
-
-use serde::Serialize;
 
 pub const SOURCE_FAKE: i8 = 0;
 pub const SOURCE_SYNC: i8 = 1;
@@ -17,13 +18,15 @@ pub struct UserModel {
     pub avatar_url: Option<String>,
     pub status: i8,
     pub created_at: SqlDateTime,
+    pub topic_count: u64,
 }
 
-#[derive(Debug, Serialize, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
 pub struct UserSimple {
     pub id: u64,
     pub display_name: String,
     pub avatar_url: Option<String>,
+    pub status: i8,
 }
 
 impl UserModel {
@@ -32,7 +35,12 @@ impl UserModel {
             id: self.id,
             display_name: self.display_name.clone(),
             avatar_url: self.avatar_url.clone(),
+            status: self.status,
         }
+    }
+
+    pub fn is_actived(self: &Self) -> bool {
+        return self.status >= STATUS_ACTIVED;
     }
 }
 
@@ -47,6 +55,7 @@ impl Default for UserModel {
             avatar_url: None,
             status: STATUS_ACTIVED,
             created_at: SqlDateTime::MIN,
+            topic_count: 0,
         }
     }
 }
@@ -84,6 +93,35 @@ pub async fn get_by_account(
     Ok(res)
 }
 
+pub async fn get_simple_map_by_ids(
+    conn: &mut SqlConnection,
+    ids: Vec<u64>,
+) -> Result<HashMap<u64, UserSimple>, ApiError> {
+    if ids.len() < 1 {
+        return Ok(HashMap::new());
+    }
+
+    let ids_str = ids
+        .iter()
+        .map(ToString::to_string)
+        .collect::<Vec<String>>()
+        .join(",");
+    let res = sqlx::query_as::<_, UserSimple>(&format!(
+        "select id,display_name,avatar_url,status from dg_users where id in ({})",
+        ids_str
+    ))
+    .fetch_all(conn)
+    .await
+    .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
+
+    let mut out = HashMap::new();
+    for o in res {
+        out.insert(o.id, o);
+    }
+
+    Ok(out)
+}
+
 pub async fn create(conn: &mut SqlConnection, user: &mut UserModel) -> Result<u64, ApiError> {
     let res = sqlx::query(
         "insert into dg_users(app_id,source,account,display_name,avatar_url,status) values(?,?,?,?,?,?)",
@@ -109,6 +147,16 @@ pub async fn update_profile(
         .bind(&user.display_name)
         .bind(&user.avatar_url)
         .bind(user.id)
+        .execute(conn)
+        .await
+        .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
+
+    Ok(())
+}
+
+pub async fn update_topic_count(conn: &mut SqlConnection, id: u64) -> Result<(), ApiError> {
+    sqlx::query("update dg_users set topic_count=topic_count+1 where id=?")
+        .bind(id)
         .execute(conn)
         .await
         .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
