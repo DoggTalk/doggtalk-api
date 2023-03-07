@@ -10,7 +10,7 @@ pub struct ReplyModel {
     pub topic_id: u64,
     pub user_id: u64,
     pub content: String,
-    pub topped: u64,
+    pub topped: i64,
     pub created_at: SqlDateTime,
 }
 
@@ -19,7 +19,7 @@ pub struct ReplySimple {
     pub id: u64,
     pub user_id: u64,
     pub content: String,
-    pub topped: u64,
+    pub topped: i64,
     pub created_at: SqlDateTime,
 }
 

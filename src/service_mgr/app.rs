@@ -20,7 +20,6 @@ pub fn setup_routers() -> Router {
         .route("/create", post(app_create))
         .route("/detail", get(app_detail))
         .route("/list", get(app_list))
-        .route("/list/all", get(app_list_all))
 }
 
 #[derive(Deserialize)]
@@ -82,7 +81,7 @@ struct AppListPayload {
 #[derive(Serialize)]
 struct AppListResponse {
     total: u32,
-    apps: Vec<app::AppModel>,
+    apps: Vec<app::AppSimple>,
 }
 
 async fn app_list(
@@ -93,18 +92,7 @@ async fn app_list(
 
     let (total, apps) = app::fetch_more(&mut conn, payload.cursor, payload.count).await?;
 
+    let apps = apps.iter().map(|s| s.to_simple()).collect();
+
     Ok(api_success(AppListResponse { total, apps }))
-}
-
-#[derive(Serialize)]
-struct AppListAllResponse {
-    apps: Vec<app::AppSimple>,
-}
-
-async fn app_list_all(_claims: MgrClaims) -> Result<ApiSuccess<AppListAllResponse>, ApiError> {
-    let mut conn = database_connect().await?;
-
-    let apps = app::fetch_simple_all(&mut conn).await?;
-
-    Ok(api_success(AppListAllResponse { apps }))
 }

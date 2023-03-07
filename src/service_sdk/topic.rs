@@ -46,11 +46,11 @@ async fn topic_create(
     }
 
     let user = user::get_by_id(&mut conn, claims.user_id).await?;
-    if !user.is_actived() {
-        return Err(api_error(ApiErrorCode::AccountNotActived));
-    }
     if payload.app_id != user.app_id {
         return Err(api_error(ApiErrorCode::NoPermission));
+    }
+    if !user.is_actived() {
+        return Err(api_error(ApiErrorCode::AccountNotActived));
     }
 
     let mut topic = topic::TopicModel {
@@ -91,6 +91,9 @@ async fn topic_detail(
     let topic = topic::get_by_id(&mut conn, payload.topic_id).await?;
     if topic.app_id != payload.app_id {
         return Err(api_error(ApiErrorCode::NoPermission));
+    }
+    if !topic.is_actived() {
+        return Err(api_error(ApiErrorCode::TopicNotFound));
     }
 
     Ok(api_success(TopicDetailResponse {

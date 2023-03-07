@@ -9,7 +9,7 @@ static JWT_KEYS: Lazy<Keys> = Lazy::new(|| {
     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
     Keys::new(secret.as_bytes())
 });
-const JWT_TTL: u64 = 30 * 24 * 3600;
+const JWT_TTL: i64 = 30 * 24 * 3600;
 const JWT_ALGORITHM: Algorithm = Algorithm::HS384;
 
 struct Keys {
@@ -30,7 +30,7 @@ impl Keys {
 struct Claims {
     tc: String,
     v: String,
-    ts: u64,
+    ts: i64,
 }
 
 pub fn init() {

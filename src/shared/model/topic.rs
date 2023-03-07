@@ -18,7 +18,7 @@ pub struct TopicModel {
     pub category: u64,
     pub title: String,
     pub content: String,
-    pub topped: u64,
+    pub topped: i64,
     pub reply_count: u64,
     pub created_at: SqlDateTime,
     pub refreshed_at: SqlDateTime,
@@ -31,7 +31,7 @@ pub struct TopicSimple {
     pub category: u64,
     pub title: String,
     pub content: String,
-    pub topped: u64,
+    pub topped: i64,
     pub reply_count: u64,
     pub created_at: SqlDateTime,
     pub refreshed_at: SqlDateTime,
@@ -50,6 +50,10 @@ impl TopicModel {
             created_at: self.created_at,
             refreshed_at: self.refreshed_at,
         }
+    }
+
+    pub fn is_actived(self: &Self) -> bool {
+        return self.topped >= 0;
     }
 }
 

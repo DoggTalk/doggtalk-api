@@ -47,7 +47,7 @@ impl Default for AppModel {
 }
 
 pub fn build_key() -> String {
-    let ts = timestamp();
+    let ts = timestamp() as u64;
     let r = rand::random::<u16>();
 
     let mut out = String::new();
@@ -115,14 +115,4 @@ pub async fn fetch_more(
         .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
 
     Ok((total.0 as u32, res))
-}
-
-pub async fn fetch_simple_all(conn: &mut SqlConnection) -> Result<Vec<AppSimple>, ApiError> {
-    let res =
-        sqlx::query_as::<_, AppSimple>("select id,app_key,name,icon_url from dg_apps order by id")
-            .fetch_all(conn)
-            .await
-            .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
-
-    Ok(res)
 }
