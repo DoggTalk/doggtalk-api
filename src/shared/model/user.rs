@@ -1,5 +1,7 @@
+use once_cell::sync::Lazy;
 use serde::Serialize;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::shared::data::*;
 use crate::shared::web::*;
@@ -22,7 +24,7 @@ pub struct UserModel {
     pub topic_count: u64,
 }
 
-#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+#[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct UserSimple {
     pub id: u64,
     pub display_name: String,
@@ -72,6 +74,9 @@ impl Default for UserSimple {
     }
 }
 
+pub type ArcUserSimple = Arc<UserSimple>;
+pub static DEFAULT_SIMPLE: Lazy<ArcUserSimple> = Lazy::new(|| Arc::new(Default::default()));
+
 pub async fn get_by_id(conn: &mut SqlConnection, id: u64) -> Result<UserModel, ApiError> {
     let res = sqlx::query_as::<_, UserModel>("select * from dg_users where id=?")
         .bind(id)
@@ -108,7 +113,7 @@ pub async fn get_by_account(
 pub async fn get_simple_map_by_ids(
     conn: &mut SqlConnection,
     ids: Vec<u64>,
-) -> Result<HashMap<u64, UserSimple>, ApiError> {
+) -> Result<HashMap<u64, ArcUserSimple>, ApiError> {
     if ids.len() < 1 {
         return Ok(HashMap::new());
     }
@@ -128,7 +133,7 @@ pub async fn get_simple_map_by_ids(
 
     let mut out = HashMap::new();
     for o in res {
-        out.insert(o.id, o);
+        out.insert(o.id, Arc::new(o));
     }
 
     Ok(out)

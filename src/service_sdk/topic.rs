@@ -110,7 +110,7 @@ struct TopicListPayload {
 #[derive(Serialize)]
 struct TopicListItem {
     topic: topic::TopicSimple,
-    user: user::UserSimple,
+    user: user::ArcUserSimple,
 }
 
 #[derive(Serialize)]
@@ -142,10 +142,10 @@ async fn topic_list(
     let topics = topics
         .iter()
         .map(|s| TopicListItem {
-            user: match user_map.get(&s.user_id) {
-                Some(v) => v.clone(),
-                _ => Default::default(),
-            },
+            user: user_map
+                .get(&s.user_id)
+                .unwrap_or(&user::DEFAULT_SIMPLE)
+                .clone(),
             topic: s.to_simple(),
         })
         .collect();
