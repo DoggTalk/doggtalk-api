@@ -1,0 +1,13 @@
+{
+  "9999": "Unexpected error:",
+  "1001": "Database error:",
+  "2001": "Invalid sign:",
+  "2002": "Invalid token:",
+  "3001": "Account not found",
+  "3002": "Account or password failed",
+  "3003": "No permission",
+  "3004": "Account not actived",
+  "4001": "App not found",
+  "5001": "Topic not found",
+  "5101": "Reply not found"
+}
