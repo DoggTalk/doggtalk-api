@@ -26,7 +26,7 @@ where
         let TypedHeader(Authorization(bearer)) = parts
             .extract::<TypedHeader<Authorization<Bearer>>>()
             .await
-            .map_err(|_| api_error(ApiErrorCode::InvalidToken))?;
+            .map_err(|_| api_error2(ApiErrorCode::InvalidToken, "empty"))?;
 
         let res = jwt_parse(MGR_TC, bearer.token())?;
         let mgr_id =

@@ -54,10 +54,10 @@ pub fn jwt_parse(tc: &str, token: &str) -> Result<String, ApiError> {
     validation.required_spec_claims.clear();
 
     let res = decode::<Claims>(token, &JWT_KEYS.decoding, &validation)
-        .map_err(|_| api_error(ApiErrorCode::InvalidToken))?;
+        .map_err(|_| api_error2(ApiErrorCode::InvalidToken, "decode"))?;
 
     if res.claims.tc != tc || res.claims.ts + JWT_TTL <= timestamp() {
-        return Err(api_error(ApiErrorCode::InvalidToken));
+        return Err(api_error2(ApiErrorCode::InvalidToken, "expired"));
     } else {
         return Ok(res.claims.v);
     }

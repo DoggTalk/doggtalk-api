@@ -27,13 +27,13 @@ where
         let TypedHeader(Authorization(bearer)) = parts
             .extract::<TypedHeader<Authorization<Bearer>>>()
             .await
-            .map_err(|_| api_error(ApiErrorCode::InvalidToken))?;
+            .map_err(|_| api_error2(ApiErrorCode::InvalidToken, "empty"))?;
 
         let res = jwt_parse(SDK_TC, bearer.token())?;
         let parts: Vec<&str> = res.split("@").collect();
 
         if parts.len() != 2 {
-            return Err(api_error(ApiErrorCode::InvalidToken));
+            return Err(api_error2(ApiErrorCode::InvalidToken, "format"));
         }
 
         let app_id =

@@ -8,4 +8,5 @@ pub mod web;
 pub fn init() {
     jwt::init();
     data::init();
+    web::init();
 }

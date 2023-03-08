@@ -3,10 +3,11 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use std::error::Error;
-
 use serde::Serialize;
 use serde_json::json;
+use std::error::Error;
+
+use super::error_code::*;
 
 #[allow(dead_code)]
 pub fn api_success<T>(data: T) -> ApiSuccess<T> {
@@ -55,24 +56,6 @@ where
     }
 }
 
-#[allow(dead_code)]
-pub enum ApiErrorCode {
-    Success = 0,
-    // inner error
-    InvalidDatabase = 1001,
-    // public error
-    InvalidSign = 2001,
-    InvalidToken = 2002,
-    AccountNotFound = 3001,
-    AccountOrPasswordFailed = 3002,
-    NoPermission = 3003,
-    AccountNotActived = 3004,
-    AppNotFound = 4001,
-    TopicNotFound = 5001,
-    ReplyNotFound = 5101,
-    Unexpected = 9999,
-}
-
 pub struct ApiError {
     code: ApiErrorCode,
     error: String,
@@ -80,9 +63,10 @@ pub struct ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
+        let (code, error) = render_error(self.code, &self.error);
         let body = Json(json!({
-            "code": self.code as i32,
-            "error": self.error
+            "code": code,
+            "error": error
         }));
         (StatusCode::OK, body).into_response()
     }
