@@ -28,6 +28,7 @@ struct UserSyncLoginPayload {
     account: String,
     display_name: String,
     avatar_url: Option<String>,
+    gender: i8,
     safe_sign: String,
 }
 
@@ -62,6 +63,7 @@ async fn user_sync_login(
             account: payload.account,
             display_name: payload.display_name,
             avatar_url: payload.avatar_url,
+            gender: payload.gender,
             ..Default::default()
         };
 
@@ -69,6 +71,7 @@ async fn user_sync_login(
         user = user::get_by_id(&mut conn, user_id).await?;
     } else {
         user = exists_user.unwrap();
+        user.gender = payload.gender;
         user.display_name = payload.display_name;
         if payload.avatar_url.is_some() {
             user.avatar_url = payload.avatar_url;
@@ -100,6 +103,7 @@ async fn user_detail(claims: UserClaims) -> Result<ApiSuccess<UserDetailResponse
 
 #[derive(Deserialize)]
 struct UserUpdateProfilePayload {
+    gender: i8,
     display_name: String,
     avatar_url: Option<String>,
 }
@@ -111,6 +115,7 @@ async fn user_update_profile(
     let mut conn = database_connect().await?;
 
     let mut user = user::get_by_id(&mut conn, claims.user_id).await?;
+    user.gender = payload.gender;
     user.display_name = payload.display_name;
     if payload.avatar_url.is_some() {
         user.avatar_url = payload.avatar_url;
