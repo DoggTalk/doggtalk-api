@@ -3,6 +3,7 @@
   "1001": "Database error:",
   "2001": "Invalid sign:",
   "2002": "Invalid token:",
+  "2003": "Invalid parameters:",
   "3001": "Account not found",
   "3002": "Account or password failed",
   "3003": "No permission",

@@ -11,6 +11,7 @@ pub enum ApiErrorCode {
     // public error
     InvalidSign = 2001,
     InvalidToken = 2002,
+    InvalidParams = 2003,
     AccountNotFound = 3001,
     AccountOrPasswordFailed = 3002,
     NoPermission = 3003,
