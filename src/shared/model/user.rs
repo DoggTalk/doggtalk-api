@@ -28,6 +28,7 @@ pub struct UserModel {
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct UserSimple {
     pub id: u64,
+    pub source: i8,
     pub display_name: String,
     pub avatar_url: Option<String>,
     pub status: i8,
@@ -38,6 +39,7 @@ impl UserModel {
     pub fn to_simple(self: &Self) -> UserSimple {
         UserSimple {
             id: self.id,
+            source: self.source,
             display_name: self.display_name.clone(),
             avatar_url: self.avatar_url.clone(),
             status: self.status,
@@ -47,6 +49,39 @@ impl UserModel {
 
     pub fn is_actived(self: &Self) -> bool {
         return self.status >= STATUS_ACTIVED;
+    }
+
+    pub fn try_update_profile(
+        self: &mut Self,
+        display_name: String,
+        avatar_url: Option<String>,
+        gender: i8,
+    ) -> bool {
+        let mut modified = false;
+        if !self.display_name.eq(&display_name) {
+            modified = true;
+            self.display_name = display_name;
+        }
+        if avatar_url.is_some() {
+            match (&self.avatar_url, &avatar_url) {
+                (Some(a), Some(b)) => {
+                    if !a.eq(b) {
+                        modified = true;
+                        self.avatar_url = avatar_url;
+                    }
+                }
+                (None, Some(_)) => {
+                    modified = true;
+                    self.avatar_url = avatar_url;
+                }
+                _ => (),
+            }
+        }
+        if self.gender != gender {
+            modified = true;
+            self.gender = gender;
+        }
+        return modified;
     }
 }
 
@@ -71,6 +106,7 @@ impl Default for UserSimple {
     fn default() -> UserSimple {
         UserSimple {
             id: 0,
+            source: SOURCE_FAKE,
             display_name: String::new(),
             avatar_url: None,
             status: STATUS_PENDING,
@@ -129,7 +165,7 @@ pub async fn get_simple_map_by_ids(
         .collect::<Vec<String>>()
         .join(",");
     let res = sqlx::query_as::<_, UserSimple>(&format!(
-        "select id,display_name,avatar_url,status,gender from dg_users where id in ({})",
+        "select id,source,display_name,avatar_url,status,gender from dg_users where id in ({})",
         ids_str
     ))
     .fetch_all(conn)
@@ -186,4 +222,48 @@ pub async fn update_topic_count(conn: &mut SqlConnection, id: u64) -> Result<(),
         .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
 
     Ok(())
+}
+
+pub async fn fetch_more(
+    conn: &mut SqlConnection,
+    app_id: u64,
+    source: i8,
+    cursor: u32,
+    count: u32,
+) -> Result<(u32, Vec<UserModel>), ApiError> {
+    let mut fetch_sql = String::new();
+    let mut count_sql = String::new();
+    let mut part_binds = Vec::new();
+
+    fetch_sql.push_str("select * from dg_users where app_id=?");
+    count_sql.push_str("select count(*) from dg_users where app_id=?");
+
+    if source >= 0 {
+        fetch_sql.push_str(" and source=?");
+        part_binds.push(source);
+    }
+
+    fetch_sql.push_str(" order by id desc limit ?,?");
+
+    let mut query = sqlx::query_as::<_, UserModel>(&fetch_sql).bind(app_id);
+    for v in part_binds.iter() {
+        query = query.bind(v);
+    }
+    let users = query
+        .bind(cursor)
+        .bind(count)
+        .fetch_all(conn.as_mut())
+        .await
+        .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
+
+    let mut query = sqlx::query_as(&count_sql).bind(app_id);
+    for v in part_binds.iter() {
+        query = query.bind(v);
+    }
+    let total: (i64,) = query
+        .fetch_one(conn.as_mut())
+        .await
+        .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
+
+    Ok((total.0 as u32, users))
 }

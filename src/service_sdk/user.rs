@@ -71,12 +71,9 @@ async fn user_sync_login(
         user = user::get_by_id(&mut conn, user_id).await?;
     } else {
         user = exists_user.unwrap();
-        user.gender = payload.gender;
-        user.display_name = payload.display_name;
-        if payload.avatar_url.is_some() {
-            user.avatar_url = payload.avatar_url;
+        if user.try_update_profile(payload.display_name, payload.avatar_url, payload.gender) {
+            user::update_profile(&mut conn, &mut user).await?
         }
-        user::update_profile(&mut conn, &mut user).await?
     }
 
     Ok(api_success(UserSyncLoginResponse {
@@ -103,9 +100,9 @@ async fn user_detail(claims: UserClaims) -> Result<ApiSuccess<UserDetailResponse
 
 #[derive(Deserialize)]
 struct UserUpdateProfilePayload {
-    gender: i8,
     display_name: String,
     avatar_url: Option<String>,
+    gender: i8,
 }
 
 async fn user_update_profile(
@@ -115,12 +112,9 @@ async fn user_update_profile(
     let mut conn = database_connect().await?;
 
     let mut user = user::get_by_id(&mut conn, claims.user_id).await?;
-    user.gender = payload.gender;
-    user.display_name = payload.display_name;
-    if payload.avatar_url.is_some() {
-        user.avatar_url = payload.avatar_url;
+    if user.try_update_profile(payload.display_name, payload.avatar_url, payload.gender) {
+        user::update_profile(&mut conn, &mut user).await?;
     }
-    user::update_profile(&mut conn, &mut user).await?;
 
     Ok(api_success(UserDetailResponse { user }))
 }
