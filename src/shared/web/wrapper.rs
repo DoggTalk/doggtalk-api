@@ -29,7 +29,10 @@ where
 
         match axum::Json::<T>::from_request(req, state).await {
             Ok(value) => Ok(Self(value.0)),
-            _ => Err(api_error2(ApiErrorCode::InvalidParams, "JSON body")),
+            Err(rejection) => Err(api_error2(
+                ApiErrorCode::InvalidParams,
+                &parse_error_text(&rejection.body_text()),
+            )),
         }
     }
 }
@@ -48,7 +51,23 @@ where
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         match axum::extract::Query::<T>::from_request_parts(parts, state).await {
             Ok(value) => Ok(Self(value.0)),
-            _ => Err(api_error2(ApiErrorCode::InvalidParams, "Query body")),
+            Err(rejection) => Err(api_error2(
+                ApiErrorCode::InvalidParams,
+                &parse_error_text(&rejection.body_text()),
+            )),
         }
+    }
+}
+
+fn parse_error_text(text: &str) -> String {
+    match text.rfind(": ") {
+        Some(pos) => {
+            let out = String::from(text.split_at(pos + 2).1);
+            match out.find(" at ") {
+                Some(pos) => String::from(out.split_at(pos).0),
+                _ => out,
+            }
+        }
+        _ => String::from(text),
     }
 }
