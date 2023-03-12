@@ -53,7 +53,13 @@ async fn user_sync_login(
         return Err(api_error(ApiErrorCode::InvalidSign));
     }
 
-    let exists_user = user::get_by_account(&mut conn, payload.app_id, 1, &payload.account).await?;
+    let exists_user = user::get_by_account(
+        &mut conn,
+        payload.app_id,
+        user::SOURCE_SYNC,
+        &payload.account,
+    )
+    .await?;
 
     let mut user: user::UserModel;
     if exists_user.is_none() {

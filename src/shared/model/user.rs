@@ -135,7 +135,7 @@ pub async fn get_by_id(conn: &mut SqlConnection, id: u64) -> Result<UserModel, A
 pub async fn get_by_account(
     conn: &mut SqlConnection,
     app_id: u64,
-    source: u16,
+    source: i8,
     account: &str,
 ) -> Result<Option<UserModel>, ApiError> {
     let res = sqlx::query_as::<_, UserModel>(
