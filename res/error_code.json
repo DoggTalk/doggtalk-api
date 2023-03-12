@@ -1,9 +1,9 @@
 {
   "9999": "Unexpected error:",
   "1001": "Database error:",
-  "2001": "Invalid sign:",
-  "2002": "Invalid token:",
-  "2003": "Invalid parameters:",
+  "2001": "Invalid parameters:",
+  "2002": "Invalid sign:",
+  "2003": "Invalid token:",
   "3001": "Account not found",
   "3002": "Account or password failed",
   "3003": "No permission",

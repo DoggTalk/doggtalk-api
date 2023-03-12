@@ -9,9 +9,9 @@ pub enum ApiErrorCode {
     // inner error
     InvalidDatabase = 1001,
     // public error
-    InvalidSign = 2001,
-    InvalidToken = 2002,
-    InvalidParams = 2003,
+    InvalidParams = 2001,
+    InvalidSign = 2002,
+    InvalidToken = 2003,
     AccountNotFound = 3001,
     AccountOrPasswordFailed = 3002,
     NoPermission = 3003,
