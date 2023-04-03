@@ -1,6 +1,5 @@
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use once_cell::sync::Lazy;
-use serde::{Deserialize, Serialize};
 
 use super::base::timestamp;
 use super::web::*;

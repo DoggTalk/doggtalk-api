@@ -2,7 +2,6 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use serde::{Deserialize, Serialize};
 
 use super::base::*;
 use crate::shared::data::*;
@@ -22,11 +21,13 @@ pub fn setup_routers() -> Router {
         .route("/update/profile", post(user_update_profile))
 }
 
-#[derive(Deserialize)]
+#[derive(Validate, Deserialize)]
 struct UserCreatePayload {
     app_id: u64,
     display_name: String,
+    #[validate(custom = "validate_url")]
     avatar_url: Option<String>,
+    #[validate(custom = "validate_gender")]
     gender: i8,
 }
 
@@ -38,6 +39,11 @@ struct UserCreateResponse {
 async fn user_create(
     Json(payload): Json<UserCreatePayload>,
 ) -> Result<ApiSuccess<UserCreateResponse>, ApiError> {
+    match payload.validate() {
+        Err(e) => return Err(api_errore(ApiErrorCode::InvalidParams, &e)),
+        _ => {}
+    };
+
     let mut conn = database_connect().await?;
 
     let app = app::get_by_id(&mut conn, payload.app_id).await?;
@@ -82,12 +88,14 @@ async fn user_detail(
     Ok(api_success(UserDetailResponse { user }))
 }
 
-#[derive(Deserialize)]
+#[derive(Validate, Deserialize)]
 struct UserUpdateProfilePayload {
     app_id: u64,
     user_id: u64,
     display_name: String,
+    #[validate(custom = "validate_url")]
     avatar_url: Option<String>,
+    #[validate(custom = "validate_gender")]
     gender: i8,
 }
 
@@ -95,6 +103,11 @@ async fn user_update_profile(
     _claims: MgrClaims,
     Json(payload): Json<UserUpdateProfilePayload>,
 ) -> Result<ApiSuccess<UserDetailResponse>, ApiError> {
+    match payload.validate() {
+        Err(e) => return Err(api_errore(ApiErrorCode::InvalidParams, &e)),
+        _ => {}
+    };
+
     let mut conn = database_connect().await?;
 
     let mut user = user::get_by_id(&mut conn, payload.user_id).await?;

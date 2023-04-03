@@ -22,6 +22,7 @@ CREATE TABLE dg_apps (
 
 /*
     source - 0-Fake,1-Sync
+    gender - 0-Unknow,1-Male,2-Female
     status - 0-Pendding,1-Active,2-Ban
 */
 

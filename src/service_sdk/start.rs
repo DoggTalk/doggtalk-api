@@ -1,5 +1,4 @@
 use axum::{routing::get, Router};
-use serde::{Deserialize, Serialize};
 
 use crate::shared::data::*;
 use crate::shared::model::*;
