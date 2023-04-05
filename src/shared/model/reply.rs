@@ -143,13 +143,12 @@ pub async fn fetch_more(
     count_sql.push_str("select count(*) from dg_replies where topic_id=?");
     part_binds.push(topic_id);
 
-    if style == VisibleStyle::NORMAL {
-        fetch_sql.push_str(" and topped>=0");
-        count_sql.push_str(" and topped>=0");
-    } else {
-        fetch_sql.push_str(" and topped>-2");
-        count_sql.push_str(" and topped>-2");
-    }
+    let part_sql = match style {
+        VisibleStyle::NORMAL => " and topped>=0",
+        _ => " and topped>-2",
+    };
+    fetch_sql.push_str(part_sql);
+    count_sql.push_str(part_sql);
 
     fetch_sql.push_str(" order by created_at desc limit ?,?");
 

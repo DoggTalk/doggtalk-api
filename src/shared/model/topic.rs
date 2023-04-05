@@ -133,11 +133,12 @@ pub async fn update_reply_count(
 ) -> Result<(), ApiError> {
     let mut sql = String::new();
     sql.push_str("update dg_topics set reply_count=reply_count");
-    if op == UpdateCountOp::INCR {
-        sql.push_str("+1,refreshed_at=NOW()");
-    } else {
-        sql.push_str("-1");
-    }
+
+    let part_sql = match op {
+        UpdateCountOp::INCR => "+1,refreshed_at=NOW()",
+        _ => "-1",
+    };
+    sql.push_str(part_sql);
     sql.push_str(" where id=?");
 
     sqlx::query(&sql)
@@ -191,25 +192,25 @@ pub async fn fetch_more(
     part_binds.push(app_id);
 
     if category > 0 {
-        fetch_sql.push_str(" and category=?");
+        let part_sql = " and category=?";
+        fetch_sql.push_str(part_sql);
+        count_sql.push_str(part_sql);
         part_binds.push(category);
     }
 
-    if style == VisibleStyle::NORMAL {
-        fetch_sql.push_str(" and topped>=0");
-        count_sql.push_str(" and topped>=0");
-    } else {
-        fetch_sql.push_str(" and topped>-2");
-        count_sql.push_str(" and topped>-2");
-    }
+    let part_sql = match style {
+        VisibleStyle::NORMAL => " and topped>=0",
+        _ => " and topped>-2",
+    };
+    fetch_sql.push_str(part_sql);
+    count_sql.push_str(part_sql);
 
     fetch_sql.push_str(" order by ");
-    if order_by != VisibleOrderBy::REFRESH {
-        fetch_sql.push_str("created_at desc");
-    } else {
-        fetch_sql.push_str("topped desc,refreshed_at desc");
-    }
-
+    let part_sql = match order_by {
+        VisibleOrderBy::REFRESH => "created_at desc",
+        _ => "topped desc,refreshed_at desc",
+    };
+    fetch_sql.push_str(part_sql);
     fetch_sql.push_str(" limit ?,?");
 
     let mut query = sqlx::query_as::<_, TopicModel>(&fetch_sql);

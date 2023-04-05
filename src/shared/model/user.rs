@@ -244,11 +244,12 @@ pub async fn update_topic_count(
 ) -> Result<(), ApiError> {
     let mut sql = String::new();
     sql.push_str("update dg_users set topic_count=topic_count");
-    if op == UpdateCountOp::INCR {
-        sql.push_str("+1");
-    } else {
-        sql.push_str("-1");
-    }
+
+    let part_sql = match op {
+        UpdateCountOp::INCR => "+1",
+        _ => "-1",
+    };
+    sql.push_str(part_sql);
     sql.push_str(" where id=?");
 
     sqlx::query(&sql)
