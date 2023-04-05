@@ -1,8 +1,6 @@
 use crate::shared::data::*;
 use crate::shared::web::*;
 
-use serde::Serialize;
-
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct ManagerModel {
     pub id: u64,

@@ -1,11 +1,16 @@
-use serde::{Deserialize, Serialize};
-
 use crate::shared::data::*;
 use crate::shared::web::*;
 
 #[derive(PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum VisiblesOrderBy {
+pub enum VisibleStyle {
+    ALL = 0,
+    NORMAL = 1,
+}
+
+#[derive(PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum VisibleOrderBy {
     CREATE = 0,
     REFRESH = 1,
 }
@@ -114,11 +119,12 @@ pub async fn update_reply_count(conn: &mut SqlConnection, id: u64) -> Result<(),
     Ok(())
 }
 
-pub async fn fetch_visibles(
+pub async fn fetch_more(
     conn: &mut SqlConnection,
     app_id: u64,
     category: u64,
-    order_by: VisiblesOrderBy,
+    style: VisibleStyle,
+    order_by: VisibleOrderBy,
     cursor: u32,
     count: u32,
 ) -> Result<(u32, Vec<TopicModel>), ApiError> {
@@ -128,24 +134,28 @@ pub async fn fetch_visibles(
 
     fetch_sql.push_str("select * from dg_topics where app_id=?");
     count_sql.push_str("select count(*) from dg_topics where app_id=?");
+    part_binds.push(app_id);
 
     if category > 0 {
         fetch_sql.push_str(" and category=?");
         part_binds.push(category);
     }
 
-    fetch_sql.push_str(" and topped>=0 order by topped desc");
-    count_sql.push_str(" and topped>=0");
+    if style == VisibleStyle::NORMAL {
+        fetch_sql.push_str(" and topped>=0");
+        count_sql.push_str(" and topped>=0");
+    }
 
-    if order_by != VisiblesOrderBy::REFRESH {
-        fetch_sql.push_str(",created_at desc");
+    fetch_sql.push_str(" order by ");
+    if order_by != VisibleOrderBy::REFRESH {
+        fetch_sql.push_str("created_at desc");
     } else {
-        fetch_sql.push_str(",refreshed_at desc");
+        fetch_sql.push_str("topped desc,refreshed_at desc");
     }
 
     fetch_sql.push_str(" limit ?,?");
 
-    let mut query = sqlx::query_as::<_, TopicModel>(&fetch_sql).bind(app_id);
+    let mut query = sqlx::query_as::<_, TopicModel>(&fetch_sql);
     for v in part_binds.iter() {
         query = query.bind(v);
     }
@@ -156,7 +166,7 @@ pub async fn fetch_visibles(
         .await
         .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
 
-    let mut query = sqlx::query_as(&count_sql).bind(app_id);
+    let mut query = sqlx::query_as(&count_sql);
     for v in part_binds.iter() {
         query = query.bind(v);
     }

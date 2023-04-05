@@ -1,7 +1,12 @@
-use serde::Serialize;
-
 use crate::shared::data::*;
 use crate::shared::web::*;
+
+#[derive(PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum VisibleStyle {
+    ALL = 0,
+    NORMAL = 1,
+}
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct ReplyModel {
@@ -78,24 +83,44 @@ pub async fn create(conn: &mut SqlConnection, reply: &mut ReplyModel) -> Result<
     Ok(res.last_insert_id())
 }
 
-pub async fn fetch_visibles(
+pub async fn fetch_more(
     conn: &mut SqlConnection,
     topic_id: u64,
+    style: VisibleStyle,
     cursor: u32,
     count: u32,
 ) -> Result<(u32, Vec<ReplyModel>), ApiError> {
-    let replies = sqlx::query_as::<_, ReplyModel>(
-        "select * from dg_replies where topic_id=? and topped>=0 order by topped desc,created_at desc limit ?,?",
-    )
-    .bind(topic_id)
-    .bind(cursor)
-    .bind(count)
-    .fetch_all(conn.as_mut())
-    .await
-    .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
+    let mut fetch_sql = String::new();
+    let mut count_sql = String::new();
+    let mut part_binds = Vec::new();
 
-    let total: (i64,) = sqlx::query_as("select count(*) from dg_replies where topic_id=?")
-        .bind(topic_id)
+    fetch_sql.push_str("select * from dg_replies where topic_id=?");
+    count_sql.push_str("select count(*) from dg_replies where topic_id=?");
+    part_binds.push(topic_id);
+
+    if style == VisibleStyle::NORMAL {
+        fetch_sql.push_str(" and topped>=0");
+        count_sql.push_str(" and topped>=0");
+    }
+
+    fetch_sql.push_str(" order by created_at desc limit ?,?");
+
+    let mut query = sqlx::query_as::<_, ReplyModel>(&fetch_sql);
+    for v in part_binds.iter() {
+        query = query.bind(v);
+    }
+    let replies = query
+        .bind(cursor)
+        .bind(count)
+        .fetch_all(conn.as_mut())
+        .await
+        .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
+
+    let mut query = sqlx::query_as(&count_sql);
+    for v in part_binds.iter() {
+        query = query.bind(v);
+    }
+    let total: (i64,) = query
         .fetch_one(conn.as_mut())
         .await
         .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;

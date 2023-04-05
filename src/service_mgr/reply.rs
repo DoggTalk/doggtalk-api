@@ -9,7 +9,7 @@ use crate::shared::model::*;
 use crate::shared::web::*;
 
 async fn root() -> &'static str {
-    "DoggTalk SDK Reply API"
+    "DoggTalk MGR Reply API"
 }
 
 pub fn setup_routers() -> Router {
@@ -22,6 +22,7 @@ pub fn setup_routers() -> Router {
 #[derive(Deserialize)]
 struct ReplyCreatePayload {
     app_id: u64,
+    user_id: u64,
     topic_id: u64,
     content: String,
 }
@@ -32,12 +33,13 @@ struct ReplyCreateResponse {
 }
 
 async fn reply_create(
-    claims: UserClaims,
+    _claims: MgrClaims,
     Json(payload): Json<ReplyCreatePayload>,
 ) -> Result<ApiSuccess<ReplyCreateResponse>, ApiError> {
     let mut conn = database_connect().await?;
 
-    if payload.app_id != claims.app_id {
+    let user = user::get_by_id(&mut conn, payload.user_id).await?;
+    if payload.app_id != user.app_id || user.source != user::SOURCE_FAKE {
         return Err(api_error(ApiErrorCode::NoPermission));
     }
 
@@ -47,14 +49,6 @@ async fn reply_create(
     }
     if !topic.is_actived() {
         return Err(api_error(ApiErrorCode::TopicNotFound));
-    }
-
-    let user = user::get_by_id(&mut conn, claims.user_id).await?;
-    if payload.app_id != user.app_id {
-        return Err(api_error(ApiErrorCode::NoPermission));
-    }
-    if !user.is_actived() {
-        return Err(api_error(ApiErrorCode::AccountNotActived));
     }
 
     let mut reply = reply::ReplyModel {
@@ -77,6 +71,7 @@ async fn reply_create(
 struct ReplyListPayload {
     app_id: u64,
     topic_id: u64,
+    style: reply::VisibleStyle,
     cursor: u32,
     #[validate(custom = "validate_page_count")]
     count: u32,
@@ -95,6 +90,7 @@ struct ReplyListResponse {
 }
 
 async fn reply_list(
+    _claims: MgrClaims,
     Query(payload): Query<ReplyListPayload>,
 ) -> Result<ApiSuccess<ReplyListResponse>, ApiError> {
     match payload.validate() {
@@ -112,7 +108,7 @@ async fn reply_list(
     let (total, replies) = reply::fetch_more(
         &mut conn,
         topic.id,
-        reply::VisibleStyle::NORMAL,
+        payload.style,
         payload.cursor,
         payload.count,
     )

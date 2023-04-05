@@ -37,6 +37,7 @@ struct UserCreateResponse {
 }
 
 async fn user_create(
+    _claims: MgrClaims,
     Json(payload): Json<UserCreatePayload>,
 ) -> Result<ApiSuccess<UserCreateResponse>, ApiError> {
     match payload.validate() {
@@ -122,11 +123,13 @@ async fn user_update_profile(
     Ok(api_success(UserDetailResponse { user }))
 }
 
-#[derive(Deserialize)]
+#[derive(Validate, Deserialize)]
 struct UserListPayload {
     app_id: u64,
+    #[validate(range(min = -1, max = 1))]
     source: i8,
     cursor: u32,
+    #[validate(custom = "validate_page_count")]
     count: u32,
 }
 
@@ -140,6 +143,11 @@ async fn user_list(
     _claims: MgrClaims,
     Query(payload): Query<UserListPayload>,
 ) -> Result<ApiSuccess<UserListResponse>, ApiError> {
+    match payload.validate() {
+        Err(e) => return Err(api_errore(ApiErrorCode::InvalidParams, &e)),
+        _ => {}
+    };
+
     let mut conn = database_connect().await?;
 
     let (total, users) = user::fetch_more(

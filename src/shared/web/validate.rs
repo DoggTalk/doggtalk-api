@@ -15,3 +15,11 @@ pub fn validate_gender(value: i8) -> Result<(), ValidationError> {
 
     Err(ValidationError::new("between 0 to 2"))
 }
+
+pub fn validate_page_count(value: u32) -> Result<(), ValidationError> {
+    if value <= 500 {
+        return Ok(());
+    }
+
+    Err(ValidationError::new("less then 500"))
+}

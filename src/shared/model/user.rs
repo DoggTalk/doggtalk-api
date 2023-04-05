@@ -116,7 +116,30 @@ impl Default for UserSimple {
 }
 
 pub type ArcUserSimple = Arc<UserSimple>;
-pub static DEFAULT_SIMPLE: Lazy<ArcUserSimple> = Lazy::new(|| Arc::new(Default::default()));
+static DEFAULT_SIMPLE: Lazy<ArcUserSimple> = Lazy::new(|| Arc::new(Default::default()));
+
+pub struct ArcUserSimpleMap {
+    user_map: HashMap<u64, ArcUserSimple>,
+}
+
+impl ArcUserSimpleMap {
+    pub fn new() -> Self {
+        Self {
+            user_map: HashMap::new(),
+        }
+    }
+
+    pub fn get(self: &Self, user_id: u64) -> ArcUserSimple {
+        self.user_map
+            .get(&user_id)
+            .unwrap_or(&DEFAULT_SIMPLE)
+            .clone()
+    }
+
+    fn insert(self: &mut Self, value: ArcUserSimple) {
+        self.user_map.insert(value.id, value);
+    }
+}
 
 pub async fn get_by_id(conn: &mut SqlConnection, id: u64) -> Result<UserModel, ApiError> {
     let res = sqlx::query_as::<_, UserModel>("select * from dg_users where id=?")
@@ -154,9 +177,10 @@ pub async fn get_by_account(
 pub async fn get_simple_map_by_ids(
     conn: &mut SqlConnection,
     ids: Vec<u64>,
-) -> Result<HashMap<u64, ArcUserSimple>, ApiError> {
+) -> Result<ArcUserSimpleMap, ApiError> {
+    let mut out = ArcUserSimpleMap::new();
     if ids.len() < 1 {
-        return Ok(HashMap::new());
+        return Ok(out);
     }
 
     let ids_str = ids
@@ -172,9 +196,8 @@ pub async fn get_simple_map_by_ids(
     .await
     .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
 
-    let mut out = HashMap::new();
     for o in res {
-        out.insert(o.id, Arc::new(o));
+        out.insert(Arc::new(o));
     }
 
     Ok(out)

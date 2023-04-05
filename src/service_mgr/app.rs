@@ -20,9 +20,10 @@ pub fn setup_routers() -> Router {
         .route("/list", get(app_list))
 }
 
-#[derive(Deserialize)]
+#[derive(Validate, Deserialize)]
 struct AppCreatePayload {
     name: String,
+    #[validate(custom = "validate_url")]
     icon_url: Option<String>,
 }
 
@@ -32,8 +33,14 @@ struct AppCreateResponse {
 }
 
 async fn app_create(
+    _claims: MgrClaims,
     Json(payload): Json<AppCreatePayload>,
 ) -> Result<ApiSuccess<AppCreateResponse>, ApiError> {
+    match payload.validate() {
+        Err(e) => return Err(api_errore(ApiErrorCode::InvalidParams, &e)),
+        _ => {}
+    };
+
     let mut conn = database_connect().await?;
 
     let app = app::AppModel {
@@ -70,9 +77,10 @@ async fn app_detail(
     Ok(api_success(AppDetailResponse { app }))
 }
 
-#[derive(Deserialize)]
+#[derive(Validate, Deserialize)]
 struct AppListPayload {
     cursor: u32,
+    #[validate(custom = "validate_page_count")]
     count: u32,
 }
 
@@ -86,6 +94,11 @@ async fn app_list(
     _claims: MgrClaims,
     Query(payload): Query<AppListPayload>,
 ) -> Result<ApiSuccess<AppListResponse>, ApiError> {
+    match payload.validate() {
+        Err(e) => return Err(api_errore(ApiErrorCode::InvalidParams, &e)),
+        _ => {}
+    };
+
     let mut conn = database_connect().await?;
 
     let (total, apps) = app::fetch_more(&mut conn, payload.cursor, payload.count).await?;
