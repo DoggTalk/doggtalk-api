@@ -17,6 +17,7 @@ pub fn setup_routers() -> Router {
         .route("/", get(root))
         .route("/create", post(reply_create))
         .route("/list", get(reply_list))
+        .route("/update/status", post(reply_update_status))
 }
 
 #[derive(Deserialize)]
@@ -60,7 +61,7 @@ async fn reply_create(
     };
 
     let reply_id = reply::create(&mut conn, &mut reply).await?;
-    topic::update_reply_count(&mut conn, topic.id).await?;
+    topic::update_reply_count(&mut conn, topic.id, UpdateCountOp::INCR).await?;
 
     let reply = reply::get_by_id(&mut conn, reply_id).await?;
 
@@ -126,4 +127,40 @@ async fn reply_list(
         .collect();
 
     Ok(api_success(ReplyListResponse { total, replies }))
+}
+
+#[derive(Deserialize)]
+struct ReplyUpdateStatusPayload {
+    app_id: u64,
+    reply_id: u64,
+    action: reply::StatusAction,
+}
+
+#[derive(Serialize)]
+struct ReplyUpdateStatusResponse {
+    reply_id: u64,
+}
+
+async fn reply_update_status(
+    _claims: MgrClaims,
+    Json(payload): Json<ReplyUpdateStatusPayload>,
+) -> Result<ApiSuccess<ReplyUpdateStatusResponse>, ApiError> {
+    let mut conn = database_connect().await?;
+
+    let reply = reply::get_by_id(&mut conn, payload.reply_id).await?;
+    if reply.app_id != payload.app_id {
+        return Err(api_error(ApiErrorCode::NoPermission));
+    }
+    if reply.is_deleted() {
+        return Err(api_error(ApiErrorCode::ReplyNotFound));
+    }
+
+    reply::update_status(&mut conn, reply.id, payload.action.clone()).await?;
+    if payload.action == reply::StatusAction::DELETE {
+        topic::update_reply_count(&mut conn, reply.topic_id, UpdateCountOp::DECR).await?;
+    }
+
+    Ok(api_success(ReplyUpdateStatusResponse {
+        reply_id: reply.id,
+    }))
 }

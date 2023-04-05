@@ -42,7 +42,7 @@ CREATE TABLE dg_users (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 AUTO_INCREMENT=1000;
 
 /*
-    topped - 0-normal, >0 topped, <0 deleted
+    topped - 0-normal, >0 topped, -1-hidden, -2 deleted
 */
 
 CREATE TABLE dg_topics (
@@ -64,7 +64,7 @@ CREATE TABLE dg_topics (
 
 
 /*
-    topped - 0-normal, >0 topped, <0 deleted
+    topped - 0-normal, >0 topped,  -1-hidden, -2 deleted
 */
 
 CREATE TABLE dg_replies (

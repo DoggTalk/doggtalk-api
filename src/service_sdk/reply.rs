@@ -66,7 +66,7 @@ async fn reply_create(
     };
 
     let reply_id = reply::create(&mut conn, &mut reply).await?;
-    topic::update_reply_count(&mut conn, topic.id).await?;
+    topic::update_reply_count(&mut conn, topic.id, UpdateCountOp::INCR).await?;
 
     let reply = reply::get_by_id(&mut conn, reply_id).await?;
 

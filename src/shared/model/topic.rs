@@ -1,5 +1,9 @@
+use crate::shared::base::*;
 use crate::shared::data::*;
 use crate::shared::web::*;
+
+const STATUS_HIDDEN: i64 = -1;
+const STATUS_DELETE: i64 = -2;
 
 #[derive(PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -13,6 +17,15 @@ pub enum VisibleStyle {
 pub enum VisibleOrderBy {
     CREATE = 0,
     REFRESH = 1,
+}
+
+#[derive(PartialEq, Eq, Deserialize, Copy, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum StatusAction {
+    RESET = 0,
+    MOVEUP = 1,
+    HIDDEN = 2,
+    DELETE = 3,
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
@@ -59,6 +72,10 @@ impl TopicModel {
 
     pub fn is_actived(self: &Self) -> bool {
         return self.topped >= 0;
+    }
+
+    pub fn is_deleted(self: &Self) -> bool {
+        return self.topped <= STATUS_DELETE;
     }
 }
 
@@ -109,8 +126,45 @@ pub async fn create(conn: &mut SqlConnection, topic: &mut TopicModel) -> Result<
     Ok(res.last_insert_id())
 }
 
-pub async fn update_reply_count(conn: &mut SqlConnection, id: u64) -> Result<(), ApiError> {
-    sqlx::query("update dg_topics set reply_count=reply_count+1,refreshed_at=NOW() where id=?")
+pub async fn update_reply_count(
+    conn: &mut SqlConnection,
+    id: u64,
+    op: UpdateCountOp,
+) -> Result<(), ApiError> {
+    let mut sql = String::new();
+    sql.push_str("update dg_topics set reply_count=reply_count");
+    if op == UpdateCountOp::INCR {
+        sql.push_str("+1,refreshed_at=NOW()");
+    } else {
+        sql.push_str("-1");
+    }
+    sql.push_str(" where id=?");
+
+    sqlx::query(&sql)
+        .bind(id)
+        .execute(conn)
+        .await
+        .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
+
+    Ok(())
+}
+
+pub async fn update_status(
+    conn: &mut SqlConnection,
+    id: u64,
+    action: StatusAction,
+) -> Result<(), ApiError> {
+    let mut topped: i64 = 0;
+    if action == StatusAction::MOVEUP {
+        topped = timestamp();
+    } else if action == StatusAction::HIDDEN {
+        topped = STATUS_HIDDEN;
+    } else if action == StatusAction::DELETE {
+        topped = STATUS_DELETE;
+    }
+
+    sqlx::query("update dg_topics set topped=? where id=?")
+        .bind(topped)
         .bind(id)
         .execute(conn)
         .await
@@ -144,6 +198,9 @@ pub async fn fetch_more(
     if style == VisibleStyle::NORMAL {
         fetch_sql.push_str(" and topped>=0");
         count_sql.push_str(" and topped>=0");
+    } else {
+        fetch_sql.push_str(" and topped>-2");
+        count_sql.push_str(" and topped>-2");
     }
 
     fetch_sql.push_str(" order by ");

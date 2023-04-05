@@ -237,8 +237,21 @@ pub async fn update_profile(
     Ok(())
 }
 
-pub async fn update_topic_count(conn: &mut SqlConnection, id: u64) -> Result<(), ApiError> {
-    sqlx::query("update dg_users set topic_count=topic_count+1 where id=?")
+pub async fn update_topic_count(
+    conn: &mut SqlConnection,
+    id: u64,
+    op: UpdateCountOp,
+) -> Result<(), ApiError> {
+    let mut sql = String::new();
+    sql.push_str("update dg_users set topic_count=topic_count");
+    if op == UpdateCountOp::INCR {
+        sql.push_str("+1");
+    } else {
+        sql.push_str("-1");
+    }
+    sql.push_str(" where id=?");
+
+    sqlx::query(&sql)
         .bind(id)
         .execute(conn)
         .await

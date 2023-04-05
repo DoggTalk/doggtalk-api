@@ -18,6 +18,7 @@ pub fn setup_routers() -> Router {
         .route("/create", post(topic_create))
         .route("/detail", get(topic_detail))
         .route("/list", get(topic_list))
+        .route("/update/status", post(topic_update_status))
 }
 
 #[derive(Deserialize)]
@@ -55,7 +56,7 @@ async fn topic_create(
     };
 
     let topic_id = topic::create(&mut conn, &mut topic).await?;
-    user::update_topic_count(&mut conn, user.id).await?;
+    user::update_topic_count(&mut conn, user.id, UpdateCountOp::INCR).await?;
 
     let topic = topic::get_by_id(&mut conn, topic_id).await?;
 
@@ -83,6 +84,9 @@ async fn topic_detail(
     let topic = topic::get_by_id(&mut conn, payload.topic_id).await?;
     if topic.app_id != payload.app_id {
         return Err(api_error(ApiErrorCode::NoPermission));
+    }
+    if topic.is_deleted() {
+        return Err(api_error(ApiErrorCode::TopicNotFound));
     }
 
     let user = user::get_by_id(&mut conn, topic.user_id).await?;
@@ -152,4 +156,40 @@ async fn topic_list(
         .collect();
 
     Ok(api_success(TopicListResponse { total, topics }))
+}
+
+#[derive(Deserialize)]
+struct TopicUpdateStatusPayload {
+    app_id: u64,
+    topic_id: u64,
+    action: topic::StatusAction,
+}
+
+#[derive(Serialize)]
+struct TopicUpdateStatusResponse {
+    topic_id: u64,
+}
+
+async fn topic_update_status(
+    _claims: MgrClaims,
+    Json(payload): Json<TopicUpdateStatusPayload>,
+) -> Result<ApiSuccess<TopicUpdateStatusResponse>, ApiError> {
+    let mut conn = database_connect().await?;
+
+    let topic = topic::get_by_id(&mut conn, payload.topic_id).await?;
+    if topic.app_id != payload.app_id {
+        return Err(api_error(ApiErrorCode::NoPermission));
+    }
+    if topic.is_deleted() {
+        return Err(api_error(ApiErrorCode::TopicNotFound));
+    }
+
+    topic::update_status(&mut conn, topic.id, payload.action.clone()).await?;
+    if payload.action == topic::StatusAction::DELETE {
+        user::update_topic_count(&mut conn, topic.user_id, UpdateCountOp::DECR).await?;
+    }
+
+    Ok(api_success(TopicUpdateStatusResponse {
+        topic_id: topic.id,
+    }))
 }

@@ -61,7 +61,7 @@ async fn topic_create(
     };
 
     let topic_id = topic::create(&mut conn, &mut topic).await?;
-    user::update_topic_count(&mut conn, claims.user_id).await?;
+    user::update_topic_count(&mut conn, claims.user_id, UpdateCountOp::INCR).await?;
 
     let topic = topic::get_by_id(&mut conn, topic_id).await?;
 

@@ -1,11 +1,24 @@
+use crate::shared::base::*;
 use crate::shared::data::*;
 use crate::shared::web::*;
+
+const STATUS_HIDDEN: i64 = -1;
+const STATUS_DELETE: i64 = -2;
 
 #[derive(PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum VisibleStyle {
     ALL = 0,
     NORMAL = 1,
+}
+
+#[derive(PartialEq, Eq, Deserialize, Copy, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum StatusAction {
+    RESET = 0,
+    MOVEUP = 1,
+    HIDDEN = 2,
+    DELETE = 3,
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
@@ -37,6 +50,14 @@ impl ReplyModel {
             topped: self.topped,
             created_at: self.created_at,
         }
+    }
+
+    pub fn is_actived(self: &Self) -> bool {
+        return self.topped >= 0;
+    }
+
+    pub fn is_deleted(self: &Self) -> bool {
+        return self.topped <= STATUS_DELETE;
     }
 }
 
@@ -83,6 +104,30 @@ pub async fn create(conn: &mut SqlConnection, reply: &mut ReplyModel) -> Result<
     Ok(res.last_insert_id())
 }
 
+pub async fn update_status(
+    conn: &mut SqlConnection,
+    id: u64,
+    action: StatusAction,
+) -> Result<(), ApiError> {
+    let mut topped: i64 = 0;
+    if action == StatusAction::MOVEUP {
+        topped = timestamp();
+    } else if action == StatusAction::HIDDEN {
+        topped = STATUS_HIDDEN;
+    } else if action == StatusAction::DELETE {
+        topped = STATUS_DELETE;
+    }
+
+    sqlx::query("update dg_replies set topped=? where id=?")
+        .bind(topped)
+        .bind(id)
+        .execute(conn)
+        .await
+        .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
+
+    Ok(())
+}
+
 pub async fn fetch_more(
     conn: &mut SqlConnection,
     topic_id: u64,
@@ -101,6 +146,9 @@ pub async fn fetch_more(
     if style == VisibleStyle::NORMAL {
         fetch_sql.push_str(" and topped>=0");
         count_sql.push_str(" and topped>=0");
+    } else {
+        fetch_sql.push_str(" and topped>-2");
+        count_sql.push_str(" and topped>-2");
     }
 
     fetch_sql.push_str(" order by created_at desc limit ?,?");

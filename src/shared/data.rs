@@ -4,6 +4,12 @@ use std::time::Duration;
 
 use crate::shared::web::*;
 
+#[derive(PartialEq, Eq)]
+pub enum UpdateCountOp {
+    INCR,
+    DECR,
+}
+
 static MYSQL_POOL: Lazy<MySqlPool> = Lazy::new(|| {
     let connection_str = std::env::var("MYSQL_URL").expect("MYSQL_URL must be set");
     let max_connections: u32 = std::env::var("DB_MAX_CONNECTIONS")
