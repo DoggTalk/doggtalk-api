@@ -134,7 +134,7 @@ async fn topic_list(
 
     app::get_by_id(&mut conn, payload.app_id).await?;
 
-    let (total, topics) = topic::fetch_more(
+    let (total, topics) = topic::fetch_pagging(
         &mut conn,
         payload.app_id,
         payload.category,

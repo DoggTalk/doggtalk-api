@@ -150,7 +150,7 @@ async fn user_list(
 
     let mut conn = database_connect().await?;
 
-    let (total, users) = user::fetch_more(
+    let (total, users) = user::fetch_pagging(
         &mut conn,
         payload.app_id,
         payload.source,

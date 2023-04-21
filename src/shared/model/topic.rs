@@ -202,7 +202,7 @@ pub async fn update_status(
     Ok(())
 }
 
-pub async fn fetch_more(
+pub async fn fetch_pagging(
     conn: &mut SqlConnection,
     app_id: u64,
     category: u64,

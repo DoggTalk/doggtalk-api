@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use crate::shared::base::*;
 use crate::shared::data::*;
 use crate::shared::web::*;
@@ -235,7 +233,7 @@ pub async fn update_topic_count(
     Ok(())
 }
 
-pub async fn fetch_more(
+pub async fn fetch_pagging(
     conn: &mut SqlConnection,
     app_id: u64,
     source: i8,

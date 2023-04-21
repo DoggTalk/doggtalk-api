@@ -156,7 +156,7 @@ pub async fn update_like_count(
     Ok(())
 }
 
-pub async fn fetch_more(
+pub async fn fetch_pagging(
     conn: &mut SqlConnection,
     topic_id: u64,
     style: VisibleStyle,

@@ -95,7 +95,7 @@ pub async fn create(conn: &mut SqlConnection, app: AppModel) -> Result<u64, ApiE
     Ok(res.last_insert_id())
 }
 
-pub async fn fetch_more(
+pub async fn fetch_pagging(
     conn: &mut SqlConnection,
     cursor: u32,
     count: u32,

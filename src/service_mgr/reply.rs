@@ -107,7 +107,7 @@ async fn reply_list(
         return Err(api_error(ApiErrorCode::NoPermission));
     }
 
-    let (total, replies) = reply::fetch_more(
+    let (total, replies) = reply::fetch_pagging(
         &mut conn,
         topic.id,
         payload.style,

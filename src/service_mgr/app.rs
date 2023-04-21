@@ -101,7 +101,7 @@ async fn app_list(
 
     let mut conn = database_connect().await?;
 
-    let (total, apps) = app::fetch_more(&mut conn, payload.cursor, payload.count).await?;
+    let (total, apps) = app::fetch_pagging(&mut conn, payload.cursor, payload.count).await?;
 
     let apps = apps.iter().map(|s| s.to_simple()).collect();
 

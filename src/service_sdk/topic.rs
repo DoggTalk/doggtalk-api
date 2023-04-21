@@ -2,7 +2,6 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use std::collections::HashSet;
 
 use super::base::*;
 use crate::shared::base::*;
@@ -310,7 +309,7 @@ async fn topic_list(
 
     app::get_by_id(&mut conn, payload.app_id).await?;
 
-    let (total, topics) = topic::fetch_more(
+    let (total, topics) = topic::fetch_pagging(
         &mut conn,
         payload.app_id,
         payload.category,
