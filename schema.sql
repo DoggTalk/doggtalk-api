@@ -1,4 +1,4 @@
-CREATE TABLE dg_managers (
+CREATE TABLE IF NOT EXISTS dg_managers (
   id bigint unsigned NOT NULL AUTO_INCREMENT,
   username varchar(100) NOT NULL,
   password varchar(100) NOT NULL,
@@ -7,9 +7,9 @@ CREATE TABLE dg_managers (
   UNIQUE KEY UK_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 AUTO_INCREMENT=1000;
 
-INSERT INTO dg_managers(username,password) VALUES('admin',SHA2('admin', 256));
+INSERT IGNORE dg_managers(username,password) VALUES('admin',SHA2('admin', 256));
 
-CREATE TABLE dg_apps (
+CREATE TABLE IF NOT EXISTS dg_apps (
   id bigint unsigned NOT NULL AUTO_INCREMENT,
   app_key varchar(100) NOT NULL,
   app_secret varchar(100) NOT NULL,
@@ -26,7 +26,7 @@ CREATE TABLE dg_apps (
     status - 0-Pendding,1-Active,2-Ban
 */
 
-CREATE TABLE dg_users (
+CREATE TABLE IF NOT EXISTS dg_users (
   id bigint unsigned NOT NULL AUTO_INCREMENT,
   app_id bigint unsigned NOT NULL,
   `source` tinyint NOT NULL,
@@ -45,7 +45,7 @@ CREATE TABLE dg_users (
     topped - 0-normal, >0 topped, -1-hidden, -2 deleted
 */
 
-CREATE TABLE dg_topics (
+CREATE TABLE IF NOT EXISTS dg_topics (
   id bigint unsigned NOT NULL AUTO_INCREMENT,
   app_id bigint unsigned NOT NULL,
   user_id bigint unsigned NOT NULL,
@@ -68,7 +68,7 @@ CREATE TABLE dg_topics (
     topped - 0-normal, >0 topped,  -1-hidden, -2 deleted
 */
 
-CREATE TABLE dg_replies (
+CREATE TABLE IF NOT EXISTS dg_replies (
   id bigint unsigned NOT NULL AUTO_INCREMENT,
   app_id bigint unsigned NOT NULL,
   topic_id bigint unsigned NOT NULL,

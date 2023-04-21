@@ -33,6 +33,15 @@ where
         Default::default()
     }
 
+    pub fn opt(self: &Self, key: K) -> Option<Arc<V>> {
+        let value = self.data_map.get(&key);
+        if value.is_none() {
+            return None;
+        }
+
+        Some(value.unwrap().clone())
+    }
+
     pub fn insert(self: &mut Self, key: K, value: V) {
         self.data_map.insert(key, Arc::new(value));
     }

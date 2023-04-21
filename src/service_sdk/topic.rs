@@ -44,11 +44,11 @@ async fn topic_create(
     claims: UserClaims,
     Json(payload): Json<TopicCreatePayload>,
 ) -> Result<ApiSuccess<TopicCreateResponse>, ApiError> {
-    let mut conn = database_connect().await?;
-
     if payload.app_id != claims.app_id {
         return Err(api_error(ApiErrorCode::NoPermission));
     }
+
+    let mut conn = database_connect().await?;
 
     let user = user::get_by_id(&mut conn, claims.user_id).await?;
     if payload.app_id != user.app_id {
@@ -91,11 +91,11 @@ async fn topic_like(
     claims: UserClaims,
     Json(payload): Json<TopicLikePayload>,
 ) -> Result<ApiSuccess<TopicLikeResponse>, ApiError> {
-    let mut conn = database_connect().await?;
-
     if payload.app_id != claims.app_id {
         return Err(api_error(ApiErrorCode::NoPermission));
     }
+
+    let mut conn = database_connect().await?;
 
     let user = user::get_by_id(&mut conn, claims.user_id).await?;
     if payload.app_id != user.app_id {
@@ -138,11 +138,11 @@ async fn topic_unlike(
     claims: UserClaims,
     Json(payload): Json<TopicLikePayload>,
 ) -> Result<ApiSuccess<TopicLikeResponse>, ApiError> {
-    let mut conn = database_connect().await?;
-
     if payload.app_id != claims.app_id {
         return Err(api_error(ApiErrorCode::NoPermission));
     }
+
+    let mut conn = database_connect().await?;
 
     let user = user::get_by_id(&mut conn, claims.user_id).await?;
     if payload.app_id != user.app_id {
@@ -244,6 +244,11 @@ async fn topic_detail(
     claims: Option<UserClaims>,
     Query(payload): Query<TopicDetailPayload>,
 ) -> Result<ApiSuccess<TopicDetailResponse>, ApiError> {
+    let claims = claims.unwrap_or_default();
+    if claims.app_id != 0 && payload.app_id != claims.app_id {
+        return Err(api_error(ApiErrorCode::NoPermission));
+    }
+
     let mut conn = database_connect().await?;
 
     let topic = topic::get_by_id(&mut conn, payload.topic_id).await?;
@@ -256,15 +261,15 @@ async fn topic_detail(
 
     let user = user::get_by_id(&mut conn, topic.user_id).await?;
 
-    let mut myself = None;
-    let user_id = claims.unwrap_or_default().user_id;
-    if user_id > 0 {
+    let myself = if claims.user_id == 0 {
+        None
+    } else {
         let mut connr = redis_connect().await?;
 
-        let myself_map = fetch_myself(&mut *connr, user_id, vec![topic.id]).await?;
+        let myself_map = fetch_myself(&mut *connr, claims.user_id, vec![topic.id]).await?;
 
-        myself = Some(myself_map.get(topic.id))
-    }
+        myself_map.opt(topic.id)
+    };
 
     Ok(api_success(TopicDetailResponse {
         user: user.to_simple(),
@@ -305,6 +310,11 @@ async fn topic_list(
         _ => {}
     };
 
+    let claims = claims.unwrap_or_default();
+    if claims.app_id != 0 && payload.app_id != claims.app_id {
+        return Err(api_error(ApiErrorCode::NoPermission));
+    }
+
     let mut conn = database_connect().await?;
 
     app::get_by_id(&mut conn, payload.app_id).await?;
@@ -323,23 +333,27 @@ async fn topic_list(
     let user_map =
         user::get_simple_map_by_ids(&mut conn, topics.iter().map(|s| s.user_id).collect()).await?;
 
-    let mut myself_map = ArcDataMap::new();
-
-    let user_id = claims.unwrap_or_default().user_id;
-    if user_id > 0 && !topics.is_empty() {
+    let myself_map = if claims.user_id == 0 || topics.is_empty() {
+        ArcDataMap::new()
+    } else {
         let mut connr = redis_connect().await?;
 
-        myself_map =
-            fetch_myself(&mut *connr, user_id, topics.iter().map(|s| s.id).collect()).await?;
-    }
+        fetch_myself(
+            &mut *connr,
+            claims.user_id,
+            topics.iter().map(|s| s.id).collect(),
+        )
+        .await?
+    };
 
     let topics = topics
         .iter()
         .map(|s| {
-            let mut myself = None;
-            if user_id > 0 {
-                myself = Some(myself_map.get(s.id));
-            }
+            let myself = if claims.user_id == 0 {
+                None
+            } else {
+                myself_map.opt(s.id)
+            };
 
             TopicListItem {
                 user: user_map.get(s.user_id),

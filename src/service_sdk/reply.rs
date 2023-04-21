@@ -42,11 +42,11 @@ async fn reply_create(
     claims: UserClaims,
     Json(payload): Json<ReplyCreatePayload>,
 ) -> Result<ApiSuccess<ReplyCreateResponse>, ApiError> {
-    let mut conn = database_connect().await?;
-
     if payload.app_id != claims.app_id {
         return Err(api_error(ApiErrorCode::NoPermission));
     }
+
+    let mut conn = database_connect().await?;
 
     let topic = topic::get_by_id(&mut conn, payload.topic_id).await?;
     if payload.app_id != topic.app_id {
@@ -96,11 +96,11 @@ async fn reply_like(
     claims: UserClaims,
     Json(payload): Json<ReplyLikePayload>,
 ) -> Result<ApiSuccess<ReplyLikeResponse>, ApiError> {
-    let mut conn = database_connect().await?;
-
     if payload.app_id != claims.app_id {
         return Err(api_error(ApiErrorCode::NoPermission));
     }
+
+    let mut conn = database_connect().await?;
 
     let user = user::get_by_id(&mut conn, claims.user_id).await?;
     if payload.app_id != user.app_id {
@@ -143,11 +143,11 @@ async fn reply_unlike(
     claims: UserClaims,
     Json(payload): Json<ReplyLikePayload>,
 ) -> Result<ApiSuccess<ReplyLikeResponse>, ApiError> {
-    let mut conn = database_connect().await?;
-
     if payload.app_id != claims.app_id {
         return Err(api_error(ApiErrorCode::NoPermission));
     }
+
+    let mut conn = database_connect().await?;
 
     let user = user::get_by_id(&mut conn, claims.user_id).await?;
     if payload.app_id != user.app_id {
@@ -263,6 +263,11 @@ async fn reply_list(
         _ => {}
     };
 
+    let claims = claims.unwrap_or_default();
+    if claims.app_id != 0 && payload.app_id != claims.app_id {
+        return Err(api_error(ApiErrorCode::NoPermission));
+    }
+
     let mut conn = database_connect().await?;
 
     let topic = topic::get_by_id(&mut conn, payload.topic_id).await?;
@@ -282,23 +287,27 @@ async fn reply_list(
     let user_map =
         user::get_simple_map_by_ids(&mut conn, replies.iter().map(|s| s.user_id).collect()).await?;
 
-    let mut myself_map = ArcDataMap::new();
-
-    let user_id = claims.unwrap_or_default().user_id;
-    if user_id > 0 && !replies.is_empty() {
+    let myself_map = if claims.user_id == 0 || replies.is_empty() {
+        ArcDataMap::new()
+    } else {
         let mut connr = redis_connect().await?;
 
-        myself_map =
-            fetch_myself(&mut *connr, user_id, replies.iter().map(|s| s.id).collect()).await?;
-    }
+        fetch_myself(
+            &mut *connr,
+            claims.user_id,
+            replies.iter().map(|s| s.id).collect(),
+        )
+        .await?
+    };
 
     let replies = replies
         .iter()
         .map(|s| {
-            let mut myself = None;
-            if user_id > 0 {
-                myself = Some(myself_map.get(s.id));
-            }
+            let myself = if claims.user_id == 0 {
+                None
+            } else {
+                myself_map.opt(s.id)
+            };
 
             ReplyListItem {
                 user: user_map.get(s.user_id),
