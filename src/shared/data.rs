@@ -23,7 +23,7 @@ pub type SqlConnection = sqlx::pool::PoolConnection<sqlx::MySql>;
 static MYSQL_POOL: Lazy<MySqlPool> = Lazy::new(|| {
     let connection_str = std::env::var("MYSQL_URL").expect("MYSQL_URL must be set");
     let max_connections: u32 = std::env::var("MYSQL_MAX_CONNECTIONS")
-        .unwrap_or("5".to_string())
+        .unwrap_or("10".to_string())
         .parse()
         .expect("MYSQL_MAX_CONNECTIONS must an int");
 
@@ -47,7 +47,7 @@ pub type RedisConnection = bb8::PooledConnection<'static, RedisConnectionManager
 static REDIS_POOL: Lazy<bb8::Pool<RedisConnectionManager>> = Lazy::new(|| {
     let connection_str = std::env::var("REDIS_URL").expect("REDIS_URL must be set");
     let max_connections: u32 = std::env::var("REDIS_MAX_CONNECTIONS")
-        .unwrap_or("5".to_string())
+        .unwrap_or("10".to_string())
         .parse()
         .expect("REDIS_MAX_CONNECTIONS must an int");
 
