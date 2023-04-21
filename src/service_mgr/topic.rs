@@ -4,6 +4,7 @@ use axum::{
 };
 
 use super::base::*;
+use crate::shared::base::*;
 use crate::shared::data::*;
 use crate::shared::model::*;
 use crate::shared::web::*;
@@ -111,7 +112,7 @@ struct TopicListPayload {
 #[derive(Serialize)]
 struct TopicListItem {
     topic: topic::TopicSimple,
-    user: user::ArcUserSimple,
+    user: Arc<user::UserSimple>,
 }
 
 #[derive(Serialize)]

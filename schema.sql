@@ -55,6 +55,7 @@ CREATE TABLE dg_topics (
   topped bigint NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   refreshed_at DATETIME NOT NULL,
+  like_count bigint unsigned NOT NULL DEFAULT 0,
   reply_count bigint unsigned NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
   KEY IX_topic_user (user_id,topped),
@@ -75,6 +76,7 @@ CREATE TABLE dg_replies (
   content text NOT NULL,
   topped bigint NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  like_count bigint unsigned NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
   KEY IX_reply_user (user_id,topped),
   KEY IX_reply_create (topic_id,topped,created_at)

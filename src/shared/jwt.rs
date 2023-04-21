@@ -1,7 +1,6 @@
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
-use once_cell::sync::Lazy;
 
-use super::base::timestamp;
+use super::base::*;
 use super::web::*;
 
 static JWT_KEYS: Lazy<Keys> = Lazy::new(|| {

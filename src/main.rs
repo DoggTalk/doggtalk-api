@@ -7,6 +7,11 @@ mod shared;
 
 #[tokio::main]
 async fn main() {
+    let web_port: u16 = std::env::var("WEB_PORT")
+        .unwrap_or("6000".to_string())
+        .parse()
+        .expect("WEB_PORT must an int");
+
     shared::init();
 
     let app = Router::new()
@@ -15,7 +20,7 @@ async fn main() {
         .nest("/mgr", service_mgr::setup_routers())
         .fallback(fallback);
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], web_port));
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await

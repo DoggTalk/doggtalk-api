@@ -2,8 +2,10 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use std::collections::HashSet;
 
 use super::base::*;
+use crate::shared::base::*;
 use crate::shared::data::*;
 use crate::shared::model::*;
 use crate::shared::web::*;
@@ -16,7 +18,13 @@ pub fn setup_routers() -> Router {
     Router::new()
         .route("/", get(root))
         .route("/create", post(reply_create))
+        .route("/like", post(reply_like))
+        .route("/unlike", post(reply_unlike))
         .route("/list", get(reply_list))
+}
+
+fn like_key(id: u64) -> String {
+    format!("replylike:{}", id)
 }
 
 #[derive(Deserialize)]
@@ -73,6 +81,158 @@ async fn reply_create(
     Ok(api_success(ReplyCreateResponse { reply_id: reply.id }))
 }
 
+#[derive(Deserialize)]
+struct ReplyLikePayload {
+    app_id: u64,
+    reply_id: u64,
+}
+
+#[derive(Serialize)]
+struct ReplyLikeResponse {
+    affect: u64,
+    like_count: u64,
+}
+
+async fn reply_like(
+    claims: UserClaims,
+    Json(payload): Json<ReplyLikePayload>,
+) -> Result<ApiSuccess<ReplyLikeResponse>, ApiError> {
+    let mut conn = database_connect().await?;
+
+    if payload.app_id != claims.app_id {
+        return Err(api_error(ApiErrorCode::NoPermission));
+    }
+
+    let user = user::get_by_id(&mut conn, claims.user_id).await?;
+    if payload.app_id != user.app_id {
+        return Err(api_error(ApiErrorCode::NoPermission));
+    }
+    if !user.is_actived() {
+        return Err(api_error(ApiErrorCode::AccountNotActived));
+    }
+
+    let reply = reply::get_by_id(&mut conn, payload.reply_id).await?;
+    if reply.app_id != payload.app_id {
+        return Err(api_error(ApiErrorCode::NoPermission));
+    }
+    if !reply.is_actived() {
+        return Err(api_error(ApiErrorCode::ReplyNotFound));
+    }
+
+    let mut connr = redis_connect().await?;
+
+    let affect: u64 = redis::cmd("ZADD")
+        .arg(like_key(reply.id))
+        .arg("NX")
+        .arg(timestamp())
+        .arg(user.id)
+        .query_async(&mut *connr)
+        .await
+        .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
+
+    if affect > 0 {
+        reply::update_like_count(&mut conn, reply.id, UpdateCountOp::INCR).await?;
+    }
+
+    Ok(api_success(ReplyLikeResponse {
+        affect,
+        like_count: reply.like_count + affect,
+    }))
+}
+
+async fn reply_unlike(
+    claims: UserClaims,
+    Json(payload): Json<ReplyLikePayload>,
+) -> Result<ApiSuccess<ReplyLikeResponse>, ApiError> {
+    let mut conn = database_connect().await?;
+
+    if payload.app_id != claims.app_id {
+        return Err(api_error(ApiErrorCode::NoPermission));
+    }
+
+    let user = user::get_by_id(&mut conn, claims.user_id).await?;
+    if payload.app_id != user.app_id {
+        return Err(api_error(ApiErrorCode::NoPermission));
+    }
+    if !user.is_actived() {
+        return Err(api_error(ApiErrorCode::AccountNotActived));
+    }
+
+    let reply = reply::get_by_id(&mut conn, payload.reply_id).await?;
+    if reply.app_id != payload.app_id {
+        return Err(api_error(ApiErrorCode::NoPermission));
+    }
+    if !reply.is_actived() {
+        return Err(api_error(ApiErrorCode::ReplyNotFound));
+    }
+
+    let mut connr = redis_connect().await?;
+
+    let affect: u64 = redis::cmd("ZREM")
+        .arg(like_key(reply.id))
+        .arg(user.id)
+        .query_async(&mut *connr)
+        .await
+        .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
+
+    if affect > 0 {
+        reply::update_like_count(&mut conn, reply.id, UpdateCountOp::DECR).await?;
+    }
+
+    Ok(api_success(ReplyLikeResponse {
+        affect,
+        like_count: reply.like_count + affect,
+    }))
+}
+
+#[derive(Serialize)]
+struct MySelfData {
+    is_liked: bool,
+}
+
+impl Default for MySelfData {
+    fn default() -> Self {
+        Self { is_liked: false }
+    }
+}
+
+async fn fetch_myself<C>(
+    conn: &mut C,
+    user_id: u64,
+    reply_ids: Vec<u64>,
+) -> Result<ArcDataMap<u64, MySelfData>, ApiError>
+where
+    C: RedisConnectionLike,
+{
+    let mut pipe = redis::pipe();
+    for id in reply_ids.iter() {
+        pipe.cmd("ZSCORE").arg(like_key(*id)).arg(user_id);
+    }
+    let scores: Vec<Option<u64>> = pipe
+        .query_async(conn)
+        .await
+        .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
+
+    let mut like_ids = HashSet::new();
+    for (i, o) in scores.iter().enumerate() {
+        if o.is_some() {
+            like_ids.insert(reply_ids.get(i).unwrap());
+        }
+    }
+
+    let mut out = ArcDataMap::new();
+    for id in reply_ids.iter() {
+        out.insert(
+            *id,
+            MySelfData {
+                is_liked: like_ids.contains(id),
+            },
+        );
+    }
+
+    Ok(out)
+}
+
 #[derive(Validate, Deserialize)]
 struct ReplyListPayload {
     app_id: u64,
@@ -85,7 +245,8 @@ struct ReplyListPayload {
 #[derive(Serialize)]
 struct ReplyListItem {
     reply: reply::ReplySimple,
-    user: user::ArcUserSimple,
+    user: Arc<user::UserSimple>,
+    myself: Option<Arc<MySelfData>>,
 }
 
 #[derive(Serialize)]
@@ -95,6 +256,7 @@ struct ReplyListResponse {
 }
 
 async fn reply_list(
+    claims: Option<UserClaims>,
     Query(payload): Query<ReplyListPayload>,
 ) -> Result<ApiSuccess<ReplyListResponse>, ApiError> {
     match payload.validate() {
@@ -121,11 +283,29 @@ async fn reply_list(
     let user_map =
         user::get_simple_map_by_ids(&mut conn, replies.iter().map(|s| s.user_id).collect()).await?;
 
+    let mut myself_map = ArcDataMap::new();
+
+    let user_id = claims.unwrap_or_default().user_id;
+    if user_id > 0 && !replies.is_empty() {
+        let mut connr = redis_connect().await?;
+
+        myself_map =
+            fetch_myself(&mut *connr, user_id, replies.iter().map(|s| s.id).collect()).await?;
+    }
+
     let replies = replies
         .iter()
-        .map(|s| ReplyListItem {
-            user: user_map.get(s.user_id),
-            reply: s.to_simple(),
+        .map(|s| {
+            let mut myself = None;
+            if user_id > 0 {
+                myself = Some(myself_map.get(s.id));
+            }
+
+            ReplyListItem {
+                user: user_map.get(s.user_id),
+                reply: s.to_simple(),
+                myself,
+            }
         })
         .collect();
 

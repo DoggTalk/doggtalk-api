@@ -37,9 +37,10 @@ pub struct TopicModel {
     pub title: String,
     pub content: String,
     pub topped: i64,
-    pub reply_count: u64,
     pub created_at: SqlDateTime,
     pub refreshed_at: SqlDateTime,
+    pub like_count: u64,
+    pub reply_count: u64,
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
@@ -50,9 +51,10 @@ pub struct TopicSimple {
     pub title: String,
     pub content: String,
     pub topped: i64,
-    pub reply_count: u64,
     pub created_at: SqlDateTime,
     pub refreshed_at: SqlDateTime,
+    pub like_count: u64,
+    pub reply_count: u64,
 }
 
 impl TopicModel {
@@ -64,9 +66,10 @@ impl TopicModel {
             title: self.title.clone(),
             content: self.content.clone(),
             topped: self.topped,
-            reply_count: self.reply_count,
             created_at: self.created_at,
             refreshed_at: self.refreshed_at,
+            like_count: self.like_count,
+            reply_count: self.reply_count,
         }
     }
 
@@ -89,9 +92,10 @@ impl Default for TopicModel {
             title: String::new(),
             content: String::new(),
             topped: 0,
-            reply_count: 0,
             created_at: SqlDateTime::MIN,
             refreshed_at: SqlDateTime::MIN,
+            like_count: 0,
+            reply_count: 0,
         }
     }
 }
@@ -136,6 +140,30 @@ pub async fn update_reply_count(
 
     let part_sql = match op {
         UpdateCountOp::INCR => "+1,refreshed_at=NOW()",
+        _ => "-1",
+    };
+    sql.push_str(part_sql);
+    sql.push_str(" where id=?");
+
+    sqlx::query(&sql)
+        .bind(id)
+        .execute(conn)
+        .await
+        .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
+
+    Ok(())
+}
+
+pub async fn update_like_count(
+    conn: &mut SqlConnection,
+    id: u64,
+    op: UpdateCountOp,
+) -> Result<(), ApiError> {
+    let mut sql = String::new();
+    sql.push_str("update dg_topics set like_count=like_count");
+
+    let part_sql = match op {
+        UpdateCountOp::INCR => "+1",
         _ => "-1",
     };
     sql.push_str(part_sql);

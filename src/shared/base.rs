@@ -1,8 +1,42 @@
 use chrono::prelude::Utc;
 use serde::de::DeserializeOwned;
 use serde_json::from_reader;
+use std::collections::HashMap;
 use std::fs::File;
+use std::hash::Hash;
 use std::path::Path;
+
+pub use once_cell::sync::Lazy;
+pub use std::sync::Arc;
+
+pub struct ArcDataMap<K, V> {
+    data_map: HashMap<K, Arc<V>>,
+}
+
+impl<K, V> ArcDataMap<K, V>
+where
+    K: Eq + Hash,
+    V: Default,
+{
+    pub fn new() -> Self {
+        Self {
+            data_map: HashMap::new(),
+        }
+    }
+
+    pub fn get(self: &Self, key: K) -> Arc<V> {
+        let value = self.data_map.get(&key);
+        if value.is_some() {
+            return value.unwrap().clone();
+        }
+
+        Default::default()
+    }
+
+    pub fn insert(self: &mut Self, key: K, value: V) {
+        self.data_map.insert(key, Arc::new(value));
+    }
+}
 
 pub fn timestamp() -> i64 {
     return Utc::now().timestamp();

@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 tokio = { version = "1.24", features=["full"]}
-axum ={ version="0.6", features = ["multipart","headers","query"] }
+axum = { version="0.6", features = ["multipart","headers","query"] }
 serde = { version = "1", features = ["derive", "rc"] }
 serde_json = "1"
 validator = { version = "0.15", features = ["derive"] }
@@ -19,3 +19,5 @@ rand  = { version = "*", features = ["std"]}
 uuid = { version="*", features = ["v4"] }
 base16ct = { version="0.2", features = ["alloc"] }
 sqlx = { version = "0.6", features = ["runtime-tokio-rustls", "mysql","chrono"] }
+bb8-redis = "*"
+redis = { version="*", features = ["json"]}

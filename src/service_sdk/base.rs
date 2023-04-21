@@ -16,6 +16,15 @@ pub struct UserClaims {
     pub user_id: u64,
 }
 
+impl Default for UserClaims {
+    fn default() -> Self {
+        Self {
+            app_id: 0,
+            user_id: 0,
+        }
+    }
+}
+
 #[async_trait]
 impl<S> FromRequestParts<S> for UserClaims
 where

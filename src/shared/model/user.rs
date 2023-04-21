@@ -1,8 +1,6 @@
-use once_cell::sync::Lazy;
-use serde::Serialize;
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::collections::HashSet;
 
+use crate::shared::base::*;
 use crate::shared::data::*;
 use crate::shared::web::*;
 
@@ -115,32 +113,6 @@ impl Default for UserSimple {
     }
 }
 
-pub type ArcUserSimple = Arc<UserSimple>;
-static DEFAULT_SIMPLE: Lazy<ArcUserSimple> = Lazy::new(|| Arc::new(Default::default()));
-
-pub struct ArcUserSimpleMap {
-    user_map: HashMap<u64, ArcUserSimple>,
-}
-
-impl ArcUserSimpleMap {
-    pub fn new() -> Self {
-        Self {
-            user_map: HashMap::new(),
-        }
-    }
-
-    pub fn get(self: &Self, user_id: u64) -> ArcUserSimple {
-        self.user_map
-            .get(&user_id)
-            .unwrap_or(&DEFAULT_SIMPLE)
-            .clone()
-    }
-
-    fn insert(self: &mut Self, value: ArcUserSimple) {
-        self.user_map.insert(value.id, value);
-    }
-}
-
 pub async fn get_by_id(conn: &mut SqlConnection, id: u64) -> Result<UserModel, ApiError> {
     let res = sqlx::query_as::<_, UserModel>("select * from dg_users where id=?")
         .bind(id)
@@ -177,8 +149,8 @@ pub async fn get_by_account(
 pub async fn get_simple_map_by_ids(
     conn: &mut SqlConnection,
     ids: Vec<u64>,
-) -> Result<ArcUserSimpleMap, ApiError> {
-    let mut out = ArcUserSimpleMap::new();
+) -> Result<ArcDataMap<u64, UserSimple>, ApiError> {
+    let mut out = ArcDataMap::new();
     if ids.len() < 1 {
         return Ok(out);
     }
@@ -186,7 +158,9 @@ pub async fn get_simple_map_by_ids(
     let ids_str = ids
         .iter()
         .map(ToString::to_string)
-        .collect::<Vec<String>>()
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>()
         .join(",");
     let res = sqlx::query_as::<_, UserSimple>(&format!(
         "select id,source,display_name,avatar_url,status,gender from dg_users where id in ({})",
@@ -197,7 +171,7 @@ pub async fn get_simple_map_by_ids(
     .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
 
     for o in res {
-        out.insert(Arc::new(o));
+        out.insert(o.id, o);
     }
 
     Ok(out)

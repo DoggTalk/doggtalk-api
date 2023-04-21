@@ -30,6 +30,7 @@ pub struct ReplyModel {
     pub content: String,
     pub topped: i64,
     pub created_at: SqlDateTime,
+    pub like_count: u64,
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
@@ -39,6 +40,7 @@ pub struct ReplySimple {
     pub content: String,
     pub topped: i64,
     pub created_at: SqlDateTime,
+    pub like_count: u64,
 }
 
 impl ReplyModel {
@@ -49,6 +51,7 @@ impl ReplyModel {
             content: self.content.clone(),
             topped: self.topped,
             created_at: self.created_at,
+            like_count: self.like_count,
         }
     }
 
@@ -71,6 +74,7 @@ impl Default for ReplyModel {
             content: String::new(),
             topped: 0,
             created_at: SqlDateTime::MIN,
+            like_count: 0,
         }
     }
 }
@@ -120,6 +124,30 @@ pub async fn update_status(
 
     sqlx::query("update dg_replies set topped=? where id=?")
         .bind(topped)
+        .bind(id)
+        .execute(conn)
+        .await
+        .map_err(|e| api_errore(ApiErrorCode::InvalidDatabase, &e))?;
+
+    Ok(())
+}
+
+pub async fn update_like_count(
+    conn: &mut SqlConnection,
+    id: u64,
+    op: UpdateCountOp,
+) -> Result<(), ApiError> {
+    let mut sql = String::new();
+    sql.push_str("update dg_replies set like_count=like_count");
+
+    let part_sql = match op {
+        UpdateCountOp::INCR => "+1",
+        _ => "-1",
+    };
+    sql.push_str(part_sql);
+    sql.push_str(" where id=?");
+
+    sqlx::query(&sql)
         .bind(id)
         .execute(conn)
         .await

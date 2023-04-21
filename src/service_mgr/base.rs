@@ -15,6 +15,12 @@ pub struct MgrClaims {
     pub mgr_id: u64,
 }
 
+impl Default for MgrClaims {
+    fn default() -> Self {
+        Self { mgr_id: 0 }
+    }
+}
+
 #[async_trait]
 impl<S> FromRequestParts<S> for MgrClaims
 where
